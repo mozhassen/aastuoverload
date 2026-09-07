@@ -998,14 +998,7 @@ function recalc(){
   document.getElementById('payBreakdown').textContent =
     `${overload.toFixed(2)} overload LEH × ${rate.toLocaleString()} Birr/LEH`;
 
-  const taxPct = num(document.getElementById('f_tax').value) || 0;
-  const netEl = document.getElementById('payNet');
-  if(taxPct > 0){
-    const net = gross * (1 - taxPct/100);
-    netEl.textContent = `Estimated net after ${taxPct}% withholding: ${net.toLocaleString(undefined,{maximumFractionDigits:2})} Birr (rough estimate only — check the actual applicable tax schedule)`;
-  } else {
-    netEl.textContent = '';
-  }
+    document.getElementById('payNet').textContent = '';
 }
 
 // seed with 4 rows to mirror the original paper form
@@ -1180,8 +1173,7 @@ function buildPrintHtml(){
       payable after submission of the final grade of all students to the registrar office. The payment is subjected to income
       tax deduction and it shall in principle computed at a rate of <span class="blank">${esc(weeks)||'&nbsp;'}</span> weeks
       X <span class="blank">${rate?rate.toLocaleString():'&nbsp;'}</span> Birr per LEH <span class="blank">${overload}</span> LEHs.
-      ${net!==null ? `<br><i>Estimated net after ${taxPct}% withholding: ${net.toLocaleString(undefined,{maximumFractionDigits:2})} Birr (estimate only — verify against the applicable tax schedule).</i>` : ''}
-    </p>
+          </p>
 
     <p class="p-para">
       <span class="p-num">3.</span> In addition to the above assignment, the Employee shall invigilate examination as assigned;
