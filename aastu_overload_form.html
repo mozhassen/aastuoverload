@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AASTU Overload Teaching Contract — Form &amp; Payment Calculator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-app-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-auth-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-firestore-compat.min.js"></script>
+<style>
+  :root{
+    --paper:#F7F4EC;
+    --panel:#FFFFFF;
+    --ink:#242019;
+    --muted:#736C5C;
+    --navy:#1F3A5F;
+    --navy-dark:#152A45;
+    --brass:#A9782F;
+    --brass-light:#C79A4E;
+    --line:#DAD2BC;
+    --good:#3F6C4B;
+    --good-bg:#EAF2EC;
+    --err:#A23B3B;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:"Segoe UI","Helvetica Neue",Arial,sans-serif;
+    font-size:14px;
+    line-height:1.5;
+    padding:28px 16px 60px;
+  }
+  .wrap{max-width:900px;margin:0 auto;}
+
+  /* ---- auth gate ---- */
+  #authGate{
+    position:fixed;inset:0;background:var(--navy-dark);
+    display:flex;align-items:center;justify-content:center;
+    z-index:1000;padding:20px;
+  }
+  #authGate .box{
+    background:#fff;border-radius:4px;padding:30px 28px;
+    width:100%;max-width:380px;
+  }
+  #authGate h2{
+    font-family:Georgia,serif;color:var(--navy-dark);
+    margin:0 0 4px;font-size:19px;text-align:center;
+  }
+  #authGate p.sub{text-align:center;color:var(--muted);font-size:12.5px;margin:0 0 18px;}
+  #authGate label{margin-top:12px;}
+  #authGate input{margin-bottom:2px;}
+  #authGate .authErr{color:var(--err);font-size:12px;margin-top:8px;min-height:14px;}
+  #authGate .authBtns{display:flex;gap:10px;margin-top:16px;}
+  #authGate button.primary{
+    flex:1;background:var(--brass);color:#fff;padding:10px;font-size:13.5px;font-weight:600;border-radius:3px;
+  }
+  #authGate button.primary:hover{background:#8f6522;}
+  #authGate .toggleMode{
+    text-align:center;margin-top:14px;font-size:12.5px;color:var(--navy);cursor:pointer;text-decoration:underline;
+  }
+  #authGate .forgot{
+    text-align:center;margin-top:8px;font-size:11.5px;color:var(--muted);cursor:pointer;text-decoration:underline;
+  }
+
+  /* ---- top bar (shown once signed in) ---- */
+  #topBar{
+    display:flex;justify-content:space-between;align-items:center;
+    max-width:900px;margin:0 auto 10px;font-size:12.5px;color:var(--muted);
+  }
+  #topBar .who b{color:var(--ink);}
+  #topBar .actions-inline{display:flex;gap:10px;align-items:center;}
+  #topBar button{
+    background:transparent;border:1px solid var(--line);color:var(--ink);
+    padding:6px 12px;font-size:12px;border-radius:3px;
+  }
+  #topBar button:hover{background:#EFEADC;}
+  #topBar .adminPill{
+    background:var(--brass);color:#fff;padding:3px 9px;border-radius:10px;font-size:10.5px;font-weight:600;
+  }
+
+  /* ---- saved records panels ---- */
+  .record-list{margin-top:12px;}
+  .record-row{
+    display:flex;justify-content:space-between;align-items:center;
+    border:1px solid var(--line);border-radius:3px;padding:9px 12px;margin-bottom:6px;
+    font-size:12.5px;background:#FBFAF6;
+  }
+  .record-row .meta b{color:var(--navy-dark);}
+  .record-row .meta span{color:var(--muted);margin-left:8px;font-size:11.5px;}
+  .record-row .rec-actions{display:flex;gap:8px;}
+  .record-row button{
+    background:var(--navy);color:#fff;font-size:11px;padding:5px 10px;border-radius:2px;
+  }
+  .record-row button:hover{background:var(--navy-dark);}
+  .record-empty{color:var(--muted);font-size:12px;padding:8px 0;}
+  .btn-toggle-admin{
+    background:transparent;border:1px solid var(--brass);color:var(--brass);
+    padding:6px 12px;font-size:12px;border-radius:3px;
+  }
+
+  header.masthead{
+    text-align:center;
+    border-bottom:3px solid var(--navy);
+    padding-bottom:16px;
+    margin-bottom:22px;
+  }
+  header.masthead .crest{
+    width:92px;height:92px;border-radius:50%;
+    background:var(--navy);
+    display:inline-flex;align-items:center;justify-content:center;
+    color:var(--brass-light);
+    font-family:Georgia,"Times New Roman",serif;
+    font-weight:700;font-size:32px;
+    margin-bottom:10px;
+    letter-spacing:0.5px;
+    overflow:hidden;
+  }
+  header.masthead .crest img{
+    width:100%;height:100%;object-fit:cover;
+  }
+  header.masthead h1{
+    font-family:Georgia,"Times New Roman",serif;
+    font-size:22px;
+    font-weight:600;
+    margin:0 0 4px;
+    color:var(--navy-dark);
+  }
+  header.masthead p.sub{
+    margin:0;
+    color:var(--muted);
+    font-size:13px;
+  }
+  header.masthead p.doc{
+    margin-top:8px;
+    font-size:12px;
+    color:var(--brass);
+    font-family:Georgia,serif;
+    letter-spacing:0.3px;
+  }
+
+  section.card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:3px;
+    padding:22px 24px;
+    margin-bottom:18px;
+  }
+  section.card > h2{
+    font-family:Georgia,"Times New Roman",serif;
+    font-size:16px;
+    color:var(--navy-dark);
+    margin:0 0 4px;
+    padding-bottom:10px;
+    border-bottom:1px solid var(--line);
+  }
+  section.card > p.note{
+    margin:8px 0 16px;
+    font-size:12.5px;
+    color:var(--muted);
+  }
+  section.card > p.note.warn{
+    color:var(--err);
+  }
+
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:14px 18px;
+  }
+  .grid.two{grid-template-columns:repeat(2,1fr);}
+  @media(max-width:640px){
+    .grid, .grid.two{grid-template-columns:1fr;}
+  }
+
+  label{
+    display:block;
+    font-size:12px;
+    color:var(--muted);
+    margin-bottom:5px;
+  }
+  input[type=text], input[type=number], input[type=date], select{
+    width:100%;
+    padding:8px 9px;
+    border:1px solid var(--line);
+    border-radius:2px;
+    background:#FCFBF8;
+    color:var(--ink);
+    font-size:13.5px;
+    font-family:inherit;
+  }
+  input:focus, select:focus{
+    outline:none;
+    border-color:var(--navy);
+    background:#fff;
+  }
+  .radio-row{display:flex;gap:18px;align-items:center;height:36px;}
+  .radio-row label{margin:0;font-size:13.5px;color:var(--ink);display:flex;align-items:center;gap:6px;}
+  .radio-row input{width:auto;}
+
+  table.courses{
+    width:100%;
+    border-collapse:collapse;
+    margin-top:6px;
+    font-size:12.5px;
+  }
+  table.courses th{
+    background:var(--navy);
+    color:#fff;
+    font-weight:600;
+    padding:8px 6px;
+    text-align:left;
+    font-size:11px;
+  }
+  table.courses td{
+    border:1px solid var(--line);
+    padding:4px;
+    vertical-align:middle;
+  }
+  table.courses td input{
+    border:none;
+    background:transparent;
+    padding:5px 4px;
+    font-size:12.5px;
+  }
+  table.courses td input:focus{background:#F2EEE0;}
+  table.courses td.tot{
+    font-weight:600;
+    color:var(--navy-dark);
+    text-align:right;
+    padding-right:8px;
+    background:#F7F4EC;
+  }
+  table.courses td.rm{
+    text-align:center;
+    cursor:pointer;
+    color:var(--err);
+    font-weight:700;
+    width:26px;
+  }
+  .weights{
+    display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;
+    font-size:12px;color:var(--muted);
+    align-items:center;
+  }
+  .weights .w-item{display:flex;align-items:center;gap:6px;}
+  .weights input{width:60px;padding:5px 6px;}
+
+  button{
+    font-family:inherit;
+    cursor:pointer;
+    border:none;
+    border-radius:2px;
+  }
+  .btn-add{
+    margin-top:10px;
+    background:var(--navy);
+    color:#fff;
+    padding:7px 14px;
+    font-size:12.5px;
+  }
+  .btn-add:hover{background:var(--navy-dark);}
+
+  .summary{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:12px;
+    margin-top:8px;
+  }
+  @media(max-width:640px){.summary{grid-template-columns:repeat(2,1fr);}}
+  .sum-box{
+    border:1px solid var(--line);
+    border-radius:3px;
+    padding:12px;
+    background:#FBFAF6;
+  }
+  .sum-box .k{font-size:11px;color:var(--muted);margin-bottom:4px;}
+  .sum-box .v{font-size:17px;font-weight:600;color:var(--navy-dark);font-family:Georgia,serif;}
+
+  .payout{
+    margin-top:18px;
+    padding:16px;
+    background:var(--good-bg);
+    border:1px solid #BFD6C6;
+    border-radius:3px;
+  }
+  .payout .k{font-size:12px;color:var(--muted);}
+  .payout .v{
+    font-size:26px;
+    font-weight:700;
+    color:var(--good);
+    font-family:Georgia,serif;
+  }
+  .payout .breakdown{font-size:11.5px;color:var(--muted);margin-top:4px;}
+
+  .signers{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:14px 18px;
+  }
+  @media(max-width:640px){.signers{grid-template-columns:1fr;}}
+
+  .actions{
+    display:flex;
+    gap:12px;
+    justify-content:center;
+    margin:26px 0 10px;
+  }
+  .btn-main{
+    background:var(--brass);
+    color:#fff;
+    padding:13px 26px;
+    font-size:14px;
+    font-weight:600;
+    border-radius:3px;
+  }
+  .btn-main:hover{background:#8f6522;}
+  .btn-main:disabled{opacity:0.6;cursor:wait;}
+
+  footer.hint{
+    text-align:center;
+    font-size:11.5px;
+    color:var(--muted);
+    margin-top:6px;
+  }
+
+  /* ---- printable region (used for PDF export) — mirrors the original AASTU form ---- */
+  #printArea{
+    background:#fff;
+    color:#000;
+    padding:24px 28px;
+    width:760px;
+    font-family:"Times New Roman",Times,serif;
+    font-size:11px;
+    line-height:1.35;
+  }
+  #printArea, #printArea *{box-sizing:border-box;}
+  #printArea img.logo{height:104px;display:block;margin:0 auto 6px;}
+
+  /* top title table, like the original doc-number / title / issue-page box */
+  #printArea .p-titlebox{width:100%;border-collapse:collapse;border:1.5px solid #000;margin-bottom:12px;}
+  #printArea .p-titlebox td{border:1px solid #000;padding:4px 8px;vertical-align:middle;font-size:9.5px;}
+  #printArea .p-titlebox .uniname{
+    text-align:center;font-weight:bold;font-size:13px;letter-spacing:0.3px;
+    border-bottom:1px solid #000;padding:8px;
+  }
+  #printArea .p-titlebox .docno{width:16%;}
+  #printArea .p-titlebox .formtitle{width:56%;text-align:center;font-weight:bold;font-size:11px;}
+  #printArea .p-titlebox .issueno{width:14%;text-align:center;}
+  #printArea .p-titlebox .pageno{width:14%;text-align:center;}
+
+  /* label: value inline fields, underlined like a fill-in-the-blank form */
+  #printArea .p-fieldline{margin:5px 0;font-size:10.5px;}
+  #printArea .p-fieldline .lbl{font-weight:normal;}
+  #printArea .p-fieldline .val{
+    display:inline-block;
+    border-bottom:1px solid #000;
+    min-width:120px;
+    padding:0 4px 1px;
+    font-weight:bold;
+  }
+  #printArea .p-fieldrow{display:flex;flex-wrap:wrap;gap:0 26px;}
+  #printArea .p-fieldrow .p-fieldline{flex:1 1 auto;white-space:nowrap;}
+
+  #printArea .p-intro{font-size:10px;text-align:justify;margin:10px 0;}
+
+  #printArea .p-num{font-weight:bold;}
+
+  #printArea table.course{width:100%;border-collapse:collapse;font-size:8.8px;margin:8px 0 4px;}
+  #printArea table.course th, #printArea table.course td{border:1px solid #000;padding:3px 3px;text-align:center;}
+  #printArea table.course th{font-weight:bold;font-size:8.3px;}
+  #printArea table.course td.left{text-align:left;}
+  #printArea table.course tr.totalrow td.label{text-align:right;font-weight:bold;font-size:8.8px;}
+  #printArea table.course tr.totalrow td.value{font-weight:bold;}
+
+  #printArea .p-para{font-size:10px;text-align:justify;margin:8px 0;}
+  #printArea .p-para .blank{
+    display:inline-block;border-bottom:1px solid #000;min-width:70px;
+    padding:0 3px;font-weight:bold;text-align:center;
+  }
+
+  #printArea table.signtable{width:100%;border-collapse:collapse;font-size:9.5px;margin-top:16px;}
+  #printArea table.signtable td{border:1px solid #000;padding:10px 8px 4px;vertical-align:bottom;height:30px;}
+  #printArea table.signtable .signlabel{font-size:8px;color:#333;display:block;margin-top:2px;border-top:none;}
+  #printArea table.signtable tr:first-child td{
+    padding-top:4px;font-weight:bold;font-size:8.5px;border-bottom:none;height:auto;
+  }
+  #printArea table.signtable tr:nth-child(odd):not(:first-child) td{border-bottom:none;height:26px;}
+  #printArea table.signtable tr:nth-child(even) td{border-top:none;padding-top:0;padding-bottom:6px;}
+
+  #printArea .p-approval{margin-top:10px;font-size:10px;}
+</style>
+
+</head>
+<body>
+
+<!-- ---- Auth gate: shown until the user signs in ---- -->
+<div id="authGate">
+  <div class="box">
+    <h2 id="authTitle">Sign in</h2>
+    <p class="sub">AASTU Overload Contract tool — staff login required</p>
+    <label>Username</label>
+    <input type="text" id="auth_username" placeholder="Your username">
+    <label>Password</label>
+    <input type="text" id="auth_password" placeholder="••••••••" autocomplete="off" style="-webkit-text-security:disc;text-security:disc;">
+    <div class="authErr" id="authErr"></div>
+    <div class="authBtns">
+      <button class="primary" id="authSubmitBtn" onclick="submitAuth()">Sign in</button>
+    </div>
+    <div class="forgot" onclick="forgotPassword()">Forgot password?</div>
+    <div style="text-align:center;margin-top:14px;font-size:11px;color:var(--muted);">Developed by mozhassen</div>
+  </div>
+</div>
+<!-- ---- Top bar: shown once signed in ---- -->
+<div id="topBar" style="display:none;">
+  <div class="who">Signed in as <b id="whoEmail"></b> <span id="adminPillSlot"></span></div>
+  <div class="actions-inline">
+    <button class="btn-toggle-admin" id="adminToggleBtn" style="display:none;" onclick="toggleAdminPanel()">Admin: view all submissions</button>
+    <button onclick="doLogout()">Log out</button>
+  </div>
+</div>
+
+<div class="wrap" id="mainApp" style="display:none;">
+
+  <header class="masthead">
+    <div id="crestBox" class="crest" onclick="document.getElementById('logoInput').click()" title="Click to add a logo image" style="cursor:pointer;">AA</div>
+    <input type="file" id="logoInput" accept="image/*" style="display:none;" onchange="handleLogoUpload(event)">
+    <h1>Addis Ababa Science and Technology University</h1>
+    <p class="sub">Over Load Teaching Contract Agreement — Fill in your details below</p>
+    <p class="doc">Doc. No. VPAA/DPT/OF/032</p>
+    <p class="doc" id="logoHint" style="color:var(--muted);font-size:11px;margin-top:4px;">Click the badge above to add a logo image (used on-screen and in the downloaded PDF)</p>
+  </header>
+
+    <section class="card" id="adminPanel" style="display:none;">
+    <h2>Admin — all submitted contracts</h2>
+    <p class="note">Visible only to accounts listed in the <code>admins</code> Firestore collection.</p>
+
+    <div style="border-top:1px solid var(--line);margin:16px 0;padding-top:16px;">
+      <h3 style="font-family:Georgia,serif;font-size:14px;color:var(--navy-dark);margin:0 0 10px;">Add a new user</h3>
+      <div class="grid two">
+        <div><label>Full name</label><input type="text" id="adm_name" placeholder="Full name"></div>
+        <div><label>Username</label><input type="text" id="adm_username" placeholder="Username"></div>
+        <div><label>Email</label><input type="text" id="adm_email" placeholder="email@aastu.edu.et"></div>
+        <div><label>Password</label><input type="text" id="adm_password" placeholder="Temporary password"></div>
+      </div>
+      <div class="authErr" id="adminAddErr" style="margin-top:8px;"></div>
+      <button class="btn-toggle-admin" id="adminAddBtn" style="margin-top:10px;" onclick="adminAddUser()">Add user</button>
+    </div>
+
+    <div class="record-list" id="adminRecordList"><div class="record-empty">Loading…</div></div>
+  </section>
+
+  <section class="card">
+    <h2>1. Instructor details</h2>
+
+    <div class="grid">
+      <div><label>Instructor's name</label><input id="f_name" type="text" placeholder="Full name"></div>
+      <div><label>Academic rank</label>
+        <select id="f_rank">
+          <option value="">Select…</option>
+          <option>Graduate Assistant</option>
+          <option>Assistant Lecturer</option>
+          <option>Lecturer</option>
+          <option>Assistant Professor</option>
+          <option>Associate Professor</option>
+          <option>Professor</option>
+        </select>
+      </div>
+      <div><label>Mobile</label><input id="f_mobile" type="text" placeholder="09xxxxxxxx"></div>
+      <div><label>College</label><input id="f_college" type="text"></div>
+      <div><label>Department</label><input id="f_dept" type="text"></div>
+      <div><label>Academic year</label><input id="f_year" type="text" placeholder="e.g. 2018 E.C."></div>
+      <div><label>Semester</label>
+        <select id="f_sem"><option>I</option><option>II</option></select>
+      </div>
+      <div><label>Employer CV attached?</label>
+        <div class="radio-row">
+          <label><input type="radio" name="cv" value="Yes" checked> Yes</label>
+          <label><input type="radio" name="cv" value="No"> No</label>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>2. Course assignment</h2>
+    <p class="note">Enter each course's weekly hours. "Total LEH" per course applies the weighting below — adjust the Lab/Tutorial weights if your department uses a different Lecture-Equivalent-Hour formula.</p>
+    <table class="courses" id="courseTable">
+      <thead>
+        <tr>
+          <th style="width:15%">Course title &amp; code</th>
+          <th style="width:7%">Cr.Hr/ECTS</th>
+          <th style="width:12%">Dept. &amp; batch</th>
+          <th style="width:7%">Section</th>
+          <th style="width:7%">No. students</th>
+          <th style="width:8%">Lecture hrs/wk</th>
+          <th style="width:8%">Lab/practical hrs/wk</th>
+          <th style="width:8%">Tutorial hrs/wk</th>
+          <th style="width:9%">Total LEH</th>
+          <th style="width:3%"></th>
+        </tr>
+      </thead>
+      <tbody id="courseBody"></tbody>
+    </table>
+    <button class="btn-add" onclick="addRow()">+ Add course row</button>
+
+    <div class="weights">
+      <span>LEH weighting —</span>
+      <div class="w-item"><label style="margin:0;">Lecture ×</label><input type="number" id="w_lec" value="1" step="0.05" oninput="recalc()"></div>
+      <div class="w-item"><label style="margin:0;">Lab/practical ×</label><input type="number" id="w_lab" value="0.5" step="0.05" oninput="recalc()"></div>
+      <div class="w-item"><label style="margin:0;">Tutorial ×</label><input type="number" id="w_tut" value="1" step="0.05" oninput="recalc()"></div>
+    </div>
+
+    <div class="summary">
+      <div class="sum-box"><div class="k">Total credit hours / week</div><div class="v" id="sumCr">0</div></div>
+      <div class="sum-box"><div class="k">Weekly LEH (from table)</div><div class="v" id="sumLeh">0</div></div>
+      <div class="sum-box"><div class="k">No. of courses</div><div class="v" id="sumCourses">0</div></div>
+      <div class="sum-box"><div class="k">Total students</div><div class="v" id="sumStudents">0</div></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>3. Load &amp; overload</h2>
+    <p class="note">Your normal (non-overload) weekly teaching load depends on your rank and department policy — enter it here; anything above it is what gets paid as overload.</p>
+    <div class="grid">
+      <div><label>Normal expected load (LEH / week)</label><input id="f_expected" type="number" value="12" min="0" step="0.5" oninput="recalc()"></div>
+      <div><label>Semester start</label><input id="f_start" type="date" oninput="recalc()"></div>
+      <div><label>Semester end</label><input id="f_end" type="date" oninput="recalc()"></div>
+      <div><label>Number of teaching weeks</label><input id="f_weeks" type="number" value="16" min="1" oninput="recalc()"></div>
+    </div>
+    <div class="summary" style="margin-top:16px;grid-template-columns:repeat(3,1fr);">
+      <div class="sum-box"><div class="k">Total LEH / semester</div><div class="v" id="sumLehSem">0</div></div>
+      <div class="sum-box"><div class="k">Expected load / semester</div><div class="v" id="sumExpSem">0</div></div>
+      <div class="sum-box"><div class="k">Overload LEH / semester</div><div class="v" id="sumOverload">0</div></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>4. Payment</h2>
+    <p class="note warn">AASTU's current per-LEH overload rate isn't published anywhere I can search online — it's set internally by the university and typically varies by rank. Confirm the exact figure with your Department Head / Academic Affairs office and enter it below.</p>
+    <div class="grid two">
+      <div><label>Rate per LEH (Birr)</label><input id="f_rate" type="number" min="0" step="1" placeholder="e.g. 180" oninput="recalc()"></div>
+      <div><label>Income tax to withhold (%, optional estimate)</label><input id="f_tax" type="number" min="0" max="100" step="0.5" value="0" oninput="recalc()"></div>
+    </div>
+    <div class="payout">
+      <div class="k">Gross overload payment</div>
+      <div class="v" id="payGross">0 Birr</div>
+      <div class="breakdown" id="payWords" style="font-style:italic;margin-top:2px;"></div>
+      <div class="breakdown" id="payBreakdown">Overload LEH/semester × Rate per LEH</div>
+      <div class="breakdown" id="payNet" style="margin-top:6px;"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>5. Approval &amp; signatures</h2>
+    <p class="note">These names/dates print on the form; the actual signature is added by hand after printing.</p>
+    <div class="signers">
+      <div><label>Department Head's name</label><input id="s_dept" type="text"></div>
+      <div><label>College Dean's name</label><input id="s_dean" type="text"></div>
+      <div><label>Academic Program Director's name</label><input id="s_dir" type="text"></div>
+      <div><label>Approving officer's name</label><input id="s_appr" type="text"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>6. Saved contracts</h2>
+    <p class="note">Save a copy of this contract to your account. You can reload or re-download any saved record later.</p>
+    <div class="record-list" id="myRecordList"><div class="record-empty">No saved records yet.</div></div>
+  </section>
+
+  <div class="actions">
+    <button class="btn-toggle-admin" id="saveBtn" onclick="saveRecord()">Save record</button>
+    <button class="btn-main" id="downloadBtn" onclick="downloadPdf()">Download PDF</button>
+  </div>
+  <footer class="hint">Generates a filled copy of the AASTU Over Load Teaching Contract Agreement form (VPAA/DPT/OF/032).</footer>
+</div>
+
+<!-- hidden printable version, built at export time -->
+<div id="printHost" style="position:fixed;left:-9999px;top:0;"></div>
+
+<script>
+/* ============================================================
+   FIREBASE SETUP
+   Replace this with YOUR project's config from:
+   Firebase console → Project settings → General → Your apps → SDK setup
+   This config is safe to expose publicly — access is controlled by
+   Firestore security rules, not by hiding this object.
+   ============================================================ */
+const firebaseConfig = {
+  apiKey: "AIzaSyBnQKR9YretBAKgAnUcxunVdpOkKnNlUcg",
+  authDomain: "aastuoverload.firebaseapp.com",
+  projectId: "aastuoverload",
+  storageBucket: "aastuoverload.firebasestorage.app",
+  messagingSenderId: "1017679356912",
+  appId: "1:1017679356912:web:dd8d0024dd28065d143335",
+  measurementId: "G-J06MVDC8H2"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+const secondaryApp = firebase.initializeApp(firebaseConfig, 'Secondary');
+const secondaryAuth = secondaryApp.auth();
+const secondaryDb = secondaryApp.firestore();
+
+let currentUser = null;
+let isAdmin = false;
+
+async function submitAuth(){
+  const username = document.getElementById('auth_username').value.trim();
+  const password = document.getElementById('auth_password').value;
+  const errEl = document.getElementById('authErr');
+  errEl.style.color = 'var(--err)';
+  errEl.textContent = '';
+  if(!username || !password){
+    errEl.textContent = 'Enter both username and password.';
+    return;
+  }
+  const btn = document.getElementById('authSubmitBtn');
+  btn.disabled = true;
+  try{
+    const snap = await db.collection('users').where('username', '==', username).limit(1).get();
+    if(snap.empty){
+      errEl.textContent = 'No account found with that username.';
+      btn.disabled = false;
+      return;
+    }
+    const email = snap.docs[0].data().email;
+    await auth.signInWithEmailAndPassword(email, password);
+  } catch(e){
+    errEl.textContent = e.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+async function forgotPassword(){
+  const username = document.getElementById('auth_username').value.trim();
+  const errEl = document.getElementById('authErr');
+  errEl.style.color = 'var(--err)';
+  errEl.textContent = '';
+  if(!username){
+    errEl.textContent = 'Enter your username above first, then click "Forgot password?".';
+    return;
+  }
+  try{
+    const snap = await db.collection('users').where('username', '==', username).limit(1).get();
+    if(snap.empty){
+      errEl.textContent = 'No account found with that username.';
+      return;
+    }
+    const email = snap.docs[0].data().email;
+    await auth.sendPasswordResetEmail(email);
+    errEl.style.color = 'var(--good)';
+    errEl.textContent = 'Password reset email sent.';
+  } catch(e){
+    errEl.textContent = e.message;
+  }
+}
+function doLogout(){
+  auth.signOut();
+}
+
+auth.onAuthStateChanged(async user => {
+  currentUser = user;
+  if(user){
+    document.getElementById('authGate').style.display = 'none';
+    document.getElementById('topBar').style.display = 'flex';
+    document.getElementById('mainApp').style.display = 'block';
+    document.getElementById('whoEmail').textContent = user.email;
+
+    // check admin status: looks for a doc at admins/{uid}
+    try{
+      const adminDoc = await db.collection('admins').doc(user.uid).get();
+      isAdmin = adminDoc.exists;
+    } catch(e){ isAdmin = false; }
+    document.getElementById('adminToggleBtn').style.display = isAdmin ? 'inline-block' : 'none';
+    document.getElementById('adminPillSlot').innerHTML = isAdmin ? '<span class="adminPill">Admin</span>' : '';
+
+    loadMyRecords();
+  } else {
+    document.getElementById('authGate').style.display = 'flex';
+    document.getElementById('topBar').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'none';
+  }
+});
+
+function toggleAdminPanel(){
+  const panel = document.getElementById('adminPanel');
+  const show = panel.style.display === 'none';
+  panel.style.display = show ? 'block' : 'none';
+  if(show) loadAdminRecords();
+}
+
+async function adminAddUser(){
+  const name = document.getElementById('adm_name').value.trim();
+  const username = document.getElementById('adm_username').value.trim();
+  const email = document.getElementById('adm_email').value.trim();
+  const password = document.getElementById('adm_password').value;
+  const errEl = document.getElementById('adminAddErr');
+  errEl.style.color = 'var(--err)';
+  errEl.textContent = '';
+
+  if(!name || !username || !email || !password){
+    errEl.textContent = 'Fill in name, username, email, and password.';
+    return;
+  }
+
+  const btn = document.getElementById('adminAddBtn');
+  btn.disabled = true;
+  const orig = btn.textContent;
+  btn.textContent = 'Adding…';
+
+  try{
+    const cred = await secondaryAuth.createUserWithEmailAndPassword(email, password);
+    await secondaryDb.collection('users').doc(cred.user.uid).set({
+      name: name,
+      username: username,
+      email: email
+    });
+    await secondaryAuth.signOut();
+    errEl.style.color = 'var(--good)';
+    errEl.textContent = 'User added.';
+    document.getElementById('adm_name').value = '';
+    document.getElementById('adm_username').value = '';
+    document.getElementById('adm_email').value = '';
+    document.getElementById('adm_password').value = '';
+    if(document.getElementById('adminPanel').style.display !== 'none') loadAdminRecords();
+  } catch(e){
+    errEl.textContent = e.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = orig;
+  }
+}
+
+/* ---- collect / populate form state (used for save + load) ---- */
+function collectFormData(){
+  const courses = [];
+  document.querySelectorAll('#courseBody tr').forEach(tr=>{
+    courses.push({
+      title: tr.querySelector('.c-title').value,
+      cr: tr.querySelector('.c-cr').value,
+      batch: tr.querySelector('.c-batch').value,
+      section: tr.querySelector('.c-section').value,
+      students: tr.querySelector('.c-students').value,
+      lec: tr.querySelector('.c-lec').value,
+      lab: tr.querySelector('.c-lab').value,
+      tut: tr.querySelector('.c-tut').value
+    });
+  });
+  return {
+    name: document.getElementById('f_name').value,
+    rank: document.getElementById('f_rank').value,
+    mobile: document.getElementById('f_mobile').value,
+    college: document.getElementById('f_college').value,
+    dept: document.getElementById('f_dept').value,
+    year: document.getElementById('f_year').value,
+    sem: document.getElementById('f_sem').value,
+    cv: document.querySelector('input[name=cv]:checked').value,
+    wLec: document.getElementById('w_lec').value,
+    wLab: document.getElementById('w_lab').value,
+    wTut: document.getElementById('w_tut').value,
+    expected: document.getElementById('f_expected').value,
+    start: document.getElementById('f_start').value,
+    end: document.getElementById('f_end').value,
+    weeks: document.getElementById('f_weeks').value,
+    rate: document.getElementById('f_rate').value,
+    tax: document.getElementById('f_tax').value,
+    sDept: document.getElementById('s_dept').value,
+    sDean: document.getElementById('s_dean').value,
+    sDir: document.getElementById('s_dir').value,
+    sAppr: document.getElementById('s_appr').value,
+    courses: courses,
+    gross: num(document.getElementById('f_rate').value) * num(document.getElementById('sumOverload').textContent),
+    overload: document.getElementById('sumOverload').textContent
+  };
+}
+
+function populateForm(data){
+  document.getElementById('f_name').value = data.name || '';
+  document.getElementById('f_rank').value = data.rank || '';
+  document.getElementById('f_mobile').value = data.mobile || '';
+  document.getElementById('f_college').value = data.college || '';
+  document.getElementById('f_dept').value = data.dept || '';
+  document.getElementById('f_year').value = data.year || '';
+  document.getElementById('f_sem').value = data.sem || 'I';
+  document.querySelector(`input[name=cv][value="${data.cv || 'Yes'}"]`).checked = true;
+  document.getElementById('w_lec').value = data.wLec ?? 1;
+  document.getElementById('w_lab').value = data.wLab ?? 0.5;
+  document.getElementById('w_tut').value = data.wTut ?? 1;
+  document.getElementById('f_expected').value = data.expected ?? 12;
+  document.getElementById('f_start').value = data.start || '';
+  document.getElementById('f_end').value = data.end || '';
+  document.getElementById('f_weeks').value = data.weeks ?? 16;
+  document.getElementById('f_rate').value = data.rate || '';
+  document.getElementById('f_tax').value = data.tax ?? 0;
+  document.getElementById('s_dept').value = data.sDept || '';
+  document.getElementById('s_dean').value = data.sDean || '';
+  document.getElementById('s_dir').value = data.sDir || '';
+  document.getElementById('s_appr').value = data.sAppr || '';
+
+  document.getElementById('courseBody').innerHTML = '';
+  (data.courses || []).forEach(c=>{
+    addRow();
+    const tr = document.getElementById('courseBody').lastElementChild;
+    tr.querySelector('.c-title').value = c.title || '';
+    tr.querySelector('.c-cr').value = c.cr || '';
+    tr.querySelector('.c-batch').value = c.batch || '';
+    tr.querySelector('.c-section').value = c.section || '';
+    tr.querySelector('.c-students').value = c.students || '';
+    tr.querySelector('.c-lec').value = c.lec || '';
+    tr.querySelector('.c-lab').value = c.lab || '';
+    tr.querySelector('.c-tut').value = c.tut || '';
+  });
+  if(!data.courses || data.courses.length === 0){
+    for(let i=0;i<4;i++) addRow();
+  }
+  recalc();
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+async function saveRecord(){
+  if(!currentUser) return;
+  const btn = document.getElementById('saveBtn');
+  btn.disabled = true;
+  const orig = btn.textContent;
+  btn.textContent = 'Saving…';
+  try{
+    const data = collectFormData();
+    data.ownerUid = currentUser.uid;
+    data.ownerEmail = currentUser.email;
+    data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+    await db.collection('contracts').add(data);
+    btn.textContent = 'Saved ✓';
+    loadMyRecords();
+    setTimeout(()=>{ btn.textContent = orig; btn.disabled = false; }, 1500);
+  } catch(e){
+    alert('Could not save: ' + e.message);
+    btn.textContent = orig;
+    btn.disabled = false;
+  }
+}
+
+function fmtDate(ts){
+  if(!ts || !ts.toDate) return '';
+  return ts.toDate().toLocaleDateString(undefined, {year:'numeric',month:'short',day:'numeric'});
+}
+
+function renderRecordList(containerId, docs, showOwner){
+  const el = document.getElementById(containerId);
+  if(docs.length === 0){
+    el.innerHTML = '<div class="record-empty">No records yet.</div>';
+    return;
+  }
+  el.innerHTML = '';
+  docs.forEach(doc=>{
+    const d = doc.data();
+    const gross = (num(d.rate) * num(d.overload)).toLocaleString(undefined,{maximumFractionDigits:2});
+    const row = document.createElement('div');
+    row.className = 'record-row';
+    row.innerHTML = `
+      <div class="meta">
+        <b>${esc(d.name || '(no name)')}</b>
+        <span>${esc(d.college||'')} ${d.college && d.dept ? '·' : ''} ${esc(d.dept||'')}</span>
+        <span>${gross} Birr</span>
+        <span>${fmtDate(d.createdAt)}</span>
+        ${showOwner ? `<span>${esc(d.ownerEmail||'')}</span>` : ''}
+      </div>
+      <div class="rec-actions">
+        <button onclick="loadRecordById('${doc.id}')">Load</button>
+      </div>
+    `;
+    el.appendChild(row);
+  });
+}
+
+async function loadRecordById(id){
+  try{
+    const doc = await db.collection('contracts').doc(id).get();
+    if(doc.exists) populateForm(doc.data());
+  } catch(e){
+    alert('Could not load record: ' + e.message);
+  }
+}
+
+async function loadMyRecords(){
+  if(!currentUser) return;
+  try{
+    const snap = await db.collection('contracts')
+      .where('ownerUid', '==', currentUser.uid)
+      .orderBy('createdAt', 'desc')
+      .limit(25)
+      .get();
+    renderRecordList('myRecordList', snap.docs, false);
+  } catch(e){
+    document.getElementById('myRecordList').innerHTML =
+      `<div class="record-empty">No saved records yet.</div>`;
+  }
+}
+
+async function loadAdminRecords(){
+  try{
+    const snap = await db.collection('contracts')
+      .orderBy('createdAt', 'desc')
+      .limit(100)
+      .get();
+    renderRecordList('adminRecordList', snap.docs, true);
+  } catch(e){
+    document.getElementById('adminRecordList').innerHTML =
+      `<div class="record-empty">Could not load records: ${esc(e.message)}</div>`;
+  }
+}
+
+let logoDataUrl = null;
+
+function handleLogoUpload(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    logoDataUrl = e.target.result;
+    const box = document.getElementById('crestBox');
+    box.innerHTML = `<img src="${logoDataUrl}" alt="Logo">`;
+    document.getElementById('logoHint').textContent = 'Logo added — click the badge to replace it';
+  };
+  reader.readAsDataURL(file);
+}
+
+let rowCount = 0;
+function addRow(prefill){
+  rowCount++;
+  const tbody = document.getElementById('courseBody');
+  const tr = document.createElement('tr');
+  tr.dataset.id = rowCount;
+  tr.innerHTML = `
+    <td><input type="text" class="c-title" placeholder="Title & code"></td>
+    <td><input type="number" class="c-cr" step="0.5" min="0" oninput="recalc()"></td>
+    <td><input type="text" class="c-batch"></td>
+    <td><input type="text" class="c-section"></td>
+    <td><input type="number" class="c-students" min="0"></td>
+    <td><input type="number" class="c-lec" step="0.5" min="0" oninput="recalc()"></td>
+    <td><input type="number" class="c-lab" step="0.5" min="0" oninput="recalc()"></td>
+    <td><input type="number" class="c-tut" step="0.5" min="0" oninput="recalc()"></td>
+    <td class="tot">0</td>
+    <td class="rm" onclick="removeRow(this)">✕</td>
+  `;
+  tbody.appendChild(tr);
+  recalc();
+}
+function removeRow(el){
+  el.closest('tr').remove();
+  recalc();
+}
+function num(v){ const n = parseFloat(v); return isNaN(n) ? 0 : n; }
+
+function recalc(){
+  const wLec = num(document.getElementById('w_lec').value) || 0;
+  const wLab = num(document.getElementById('w_lab').value) || 0;
+  const wTut = num(document.getElementById('w_tut').value) || 0;
+
+  let sumCr=0, sumLeh=0, sumStudents=0, courseCount=0;
+  document.querySelectorAll('#courseBody tr').forEach(tr=>{
+    const cr = num(tr.querySelector('.c-cr').value);
+    const lec = num(tr.querySelector('.c-lec').value);
+    const lab = num(tr.querySelector('.c-lab').value);
+    const tut = num(tr.querySelector('.c-tut').value);
+    const students = num(tr.querySelector('.c-students').value);
+    const rowLeh = lec*wLec + lab*wLab + tut*wTut;
+    tr.querySelector('.tot').textContent = rowLeh.toFixed(2);
+    sumCr += cr;
+    sumLeh += rowLeh;
+    sumStudents += students;
+    if(tr.querySelector('.c-title').value.trim()) courseCount++;
+  });
+
+  document.getElementById('sumCr').textContent = sumCr.toFixed(2);
+  document.getElementById('sumLeh').textContent = sumLeh.toFixed(2);
+  document.getElementById('sumCourses').textContent = courseCount;
+  document.getElementById('sumStudents').textContent = sumStudents;
+
+  const weeks = num(document.getElementById('f_weeks').value) || 0;
+  const expected = num(document.getElementById('f_expected').value) || 0;
+
+  const lehSemester = sumLeh * weeks;
+  const expSemester = expected * weeks;
+  const overload = Math.max(0, lehSemester - expSemester);
+
+  document.getElementById('sumLehSem').textContent = lehSemester.toFixed(2);
+  document.getElementById('sumExpSem').textContent = expSemester.toFixed(2);
+  document.getElementById('sumOverload').textContent = overload.toFixed(2);
+
+  const rate = num(document.getElementById('f_rate').value) || 0;
+  const gross = overload * rate;
+  document.getElementById('payGross').textContent = gross.toLocaleString(undefined,{maximumFractionDigits:2}) + ' Birr';
+  document.getElementById('payWords').textContent = gross > 0 ? birrToWords(gross) : '';
+  document.getElementById('payBreakdown').textContent =
+    `${overload.toFixed(2)} overload LEH × ${rate.toLocaleString()} Birr/LEH`;
+
+  const taxPct = num(document.getElementById('f_tax').value) || 0;
+  const netEl = document.getElementById('payNet');
+  if(taxPct > 0){
+    const net = gross * (1 - taxPct/100);
+    netEl.textContent = `Estimated net after ${taxPct}% withholding: ${net.toLocaleString(undefined,{maximumFractionDigits:2})} Birr (rough estimate only — check the actual applicable tax schedule)`;
+  } else {
+    netEl.textContent = '';
+  }
+}
+
+// seed with 4 rows to mirror the original paper form
+for(let i=0;i<4;i++) addRow();
+
+const ONES = ['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten',
+  'Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'];
+const TENS = ['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
+
+function threeDigitsToWords(n){
+  let s = '';
+  if(n >= 100){
+    s += ONES[Math.floor(n/100)] + ' Hundred';
+    n %= 100;
+    if(n > 0) s += ' ';
+  }
+  if(n >= 20){
+    s += TENS[Math.floor(n/10)];
+    if(n % 10 > 0) s += '-' + ONES[n % 10];
+  } else if(n > 0){
+    s += ONES[n];
+  }
+  return s;
+}
+
+function integerToWords(n){
+  if(n === 0) return 'Zero';
+  const scales = [['', 1], ['Thousand', 1000], ['Million', 1000000], ['Billion', 1000000000]];
+  let parts = [];
+  let remaining = Math.floor(n);
+  for(let i = scales.length - 1; i >= 0; i--){
+    const [name, size] = scales[i];
+    const chunk = Math.floor(remaining / size);
+    if(chunk > 0){
+      parts.push(threeDigitsToWords(chunk) + (name ? ' ' + name : ''));
+      remaining %= size;
+    }
+  }
+  return parts.join(' ');
+}
+
+function birrToWords(amount){
+  const birr = Math.floor(amount);
+  const cents = Math.round((amount - birr) * 100);
+  let words = integerToWords(birr) + ' Birr';
+  if(cents > 0){
+    words += ' and ' + integerToWords(cents) + ' Cents';
+  }
+  return words + ' Only';
+}
+
+function esc(s){
+  const d = document.createElement('div');
+  d.textContent = s || '';
+  return d.innerHTML;
+}
+
+function buildPrintHtml(){
+  const name = document.getElementById('f_name').value;
+  const rank = document.getElementById('f_rank').value;
+  const mobile = document.getElementById('f_mobile').value;
+  const college = document.getElementById('f_college').value;
+  const dept = document.getElementById('f_dept').value;
+  const year = document.getElementById('f_year').value;
+  const sem = document.getElementById('f_sem').value;
+  const cv = document.querySelector('input[name=cv]:checked').value;
+  const start = document.getElementById('f_start').value;
+  const end = document.getElementById('f_end').value;
+  const weeks = document.getElementById('f_weeks').value;
+  const expected = document.getElementById('f_expected').value;
+  const rate = num(document.getElementById('f_rate').value);
+  const taxPct = num(document.getElementById('f_tax').value);
+
+  const sumCr = document.getElementById('sumCr').textContent;
+  const sumLeh = document.getElementById('sumLeh').textContent;
+  const lehSem = document.getElementById('sumLehSem').textContent;
+  const expSem = document.getElementById('sumExpSem').textContent;
+  const overload = document.getElementById('sumOverload').textContent;
+  const gross = num(overload) * rate;
+  const net = taxPct > 0 ? gross * (1 - taxPct/100) : null;
+
+  let rowsHtml = '';
+  let rowNo = 0;
+  document.querySelectorAll('#courseBody tr').forEach(tr=>{
+    const title = tr.querySelector('.c-title').value;
+    if(!title.trim() &&
+       !tr.querySelector('.c-cr').value &&
+       !tr.querySelector('.c-lec').value &&
+       !tr.querySelector('.c-lab').value &&
+       !tr.querySelector('.c-tut').value) return;
+    rowNo++;
+    rowsHtml += `<tr>
+      <td>${rowNo}</td>
+      <td class="left">${esc(title)}</td>
+      <td>${esc(tr.querySelector('.c-cr').value)}</td>
+      <td class="left">${esc(tr.querySelector('.c-batch').value)}</td>
+      <td>${esc(tr.querySelector('.c-section').value)}</td>
+      <td>${esc(tr.querySelector('.c-students').value)}</td>
+      <td>${esc(tr.querySelector('.c-lec').value)}</td>
+      <td>${esc(tr.querySelector('.c-lab').value)}</td>
+      <td>${esc(tr.querySelector('.c-tut').value)}</td>
+      <td>${tr.querySelector('.tot').textContent}</td>
+    </tr>`;
+  });
+  if(!rowsHtml){
+    rowsHtml = `<tr><td colspan="10" style="text-align:center;color:#888;">No courses entered</td></tr>`;
+  }
+
+  return `
+    ${logoDataUrl ? `<img class="logo" src="${logoDataUrl}" alt="Logo">` : ''}
+
+    <table class="p-titlebox">
+      <tr><td colspan="4" class="uniname">ADDIS ABABA SCIENCE AND TECHNOLOGY UNIVERSITY</td></tr>
+      <tr>
+        <td class="docno">Document No.<br><b>VPAA/DPT/OF/032</b></td>
+        <td class="formtitle">OVER LOAD TEACHING CONTRACT<br>AGREEMENT FORM</td>
+        <td class="issueno">Issue No.<br><b>1</b></td>
+        <td class="pageno">Page No.<br><b>Page 1 of 1</b></td>
+      </tr>
+    </table>
+
+    <div class="p-fieldrow">
+      <div class="p-fieldline"><span class="lbl">Instructor's Name:</span> <span class="val">${esc(name)||'&nbsp;'}</span></div>
+      <div class="p-fieldline"><span class="lbl">Academic Rank: (BSc/MSc/PhD)</span> <span class="val">${esc(rank)||'&nbsp;'}</span></div>
+    </div>
+    <div class="p-fieldrow">
+      <div class="p-fieldline"><span class="lbl">College:</span> <span class="val">${esc(college)||'&nbsp;'}</span></div>
+      <div class="p-fieldline"><span class="lbl">Department:</span> <span class="val">${esc(dept)||'&nbsp;'}</span></div>
+      <div class="p-fieldline"><span class="lbl">Academic Year:</span> <span class="val">${esc(year)||'&nbsp;'}</span></div>
+      <div class="p-fieldline"><span class="lbl">Semester:</span> <span class="val">${esc(sem)||'&nbsp;'}</span></div>
+    </div>
+    <div class="p-fieldrow">
+      <div class="p-fieldline"><span class="lbl">Mobile:</span> <span class="val">${esc(mobile)||'&nbsp;'}</span></div>
+      <div class="p-fieldline"><span class="lbl">Employer CV attached: (Yes/No)</span> <span class="val">${esc(cv)}</span></div>
+    </div>
+
+    <p class="p-intro">
+      Addis Ababa Science &amp; Technology University is pleased to hire the above instructor (Hereafter referred to as employee)
+      for rendering intellectual services for Regular program of the University. The University is obliged to pay the appropriate
+      sum of money for the services the employee rendered.
+    </p>
+
+    <p class="p-para"><span class="p-num">1.</span> The Assignment given to the Employee shall be as follows:</p>
+    <table class="course">
+      <thead>
+        <tr>
+          <th rowspan="2">No</th>
+          <th rowspan="2">Course Title &amp; code</th>
+          <th rowspan="2">Cr.Hr/<br>ECTS</th>
+          <th rowspan="2">Department &amp; Batch</th>
+          <th rowspan="2">Section</th>
+          <th rowspan="2">No. of students</th>
+          <th colspan="4">LEH</th>
+        </tr>
+        <tr>
+          <th>Lecture</th><th>Lab/<br>practical</th><th>Tutor</th><th>Total<br>(LEH)</th>
+        </tr>
+      </thead>
+      <tbody>${rowsHtml}
+        <tr class="totalrow"><td colspan="9" class="label">Total Lecture Equivalent Hours/per semester</td><td class="value">${lehSem}</td></tr>
+        <tr class="totalrow"><td colspan="9" class="label">Total Load (Credit hours)/per week</td><td class="value">${sumCr}</td></tr>
+        <tr class="totalrow"><td colspan="9" class="label">Total Expected Load Per Semester</td><td class="value">${expSem}</td></tr>
+        <tr class="totalrow"><td colspan="9" class="label">Total Overload</td><td class="value">${overload}</td></tr>
+      </tbody>
+    </table>
+
+    <p class="p-para">
+      <span class="p-num">2.</span> The Normal period of the semester is from <span class="blank">${start||'&nbsp;'}</span>
+      to <span class="blank">${end||'&nbsp;'}</span> during which based on the Academic Rank the University will pay
+      the employee a gross sum of birr ( <span class="blank" style="min-width:110px;">${gross?gross.toLocaleString(undefined,{maximumFractionDigits:2}):'&nbsp;'}</span> )
+      ( <span class="blank" style="min-width:220px;">${gross?birrToWords(gross):'&nbsp;'}</span> ),
+      payable after submission of the final grade of all students to the registrar office. The payment is subjected to income
+      tax deduction and it shall in principle computed at a rate of <span class="blank">${esc(weeks)||'&nbsp;'}</span> weeks
+      X <span class="blank">${rate?rate.toLocaleString():'&nbsp;'}</span> Birr per LEH <span class="blank">${overload}</span> LEHs.
+      ${net!==null ? `<br><i>Estimated net after ${taxPct}% withholding: ${net.toLocaleString(undefined,{maximumFractionDigits:2})} Birr (estimate only — verify against the applicable tax schedule).</i>` : ''}
+    </p>
+
+    <p class="p-para">
+      <span class="p-num">3.</span> In addition to the above assignment, the Employee shall invigilate examination as assigned;
+      submit copies of any handouts, test and exam papers, student grades any related documents to the respective department head.
+    </p>
+    <p class="p-para">
+      <span class="p-num">4.</span> The university shall not be obliged to make any payment where for any reason classes are
+      interrupted, and the semester course is not properly covered.
+    </p>
+    <p class="p-para">
+      <span class="p-num">5.</span> The agreement is entered into and duly signed between the following parties in the days indicated.
+    </p>
+
+    <table class="signtable">
+      <tr><td>Employee's Name</td><td>Signature</td><td>Date</td></tr>
+      <tr><td>${esc(name)||'&nbsp;'}</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+      <tr><td>Department Head's Name</td><td>Signature</td><td>Date</td></tr>
+      <tr><td>${esc(document.getElementById('s_dept').value)||'&nbsp;'}</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+      <tr><td>College Dean's Name</td><td>Signature</td><td>Date</td></tr>
+      <tr><td>${esc(document.getElementById('s_dean').value)||'&nbsp;'}</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+      <tr><td>Academic Program Director's Name</td><td>Signature</td><td>Date</td></tr>
+      <tr><td>${esc(document.getElementById('s_dir').value)||'&nbsp;'}</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+    </table>
+
+    <p class="p-approval">
+      <b>APPROVAL:</b> Name: <span class="p-para blank" style="border-bottom:1px solid #000;min-width:150px;display:inline-block;">${esc(document.getElementById('s_appr').value)||'&nbsp;'}</span>
+      &nbsp;&nbsp; Signature: <span class="blank" style="min-width:80px;">&nbsp;</span>
+      &nbsp;&nbsp; Date: <span class="blank" style="min-width:80px;">&nbsp;</span>
+    </p>
+  `;
+}
+
+async function downloadPdf(){
+  const btn = document.getElementById('downloadBtn');
+  btn.disabled = true;
+  const orig = btn.textContent;
+  btn.textContent = 'Generating…';
+  try{
+    const host = document.getElementById('printHost');
+    host.innerHTML = '';
+    const area = document.createElement('div');
+    area.id = 'printArea';
+    area.innerHTML = buildPrintHtml();
+    host.appendChild(area);
+
+    const canvas = await html2canvas(area, {scale:2, backgroundColor:'#ffffff'});
+    const imgData = canvas.toDataURL('image/png');
+
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p','mm','a4');
+    const pageW = 210, pageH = 297;
+    const imgW = pageW;
+    const imgH = canvas.height * imgW / canvas.width;
+
+    let heightLeft = imgH;
+    let position = 0;
+    pdf.addImage(imgData, 'PNG', 0, position, imgW, imgH);
+    heightLeft -= pageH;
+    while(heightLeft > 0){
+      position = heightLeft - imgH;
+      pdf.addPage();
+      pdf.addImage(imgData, 'PNG', 0, position, imgW, imgH);
+      heightLeft -= pageH;
+    }
+
+    const fname = (document.getElementById('f_name').value || 'overload_contract').trim().replace(/\s+/g,'_');
+    pdf.save(`${fname}_overload_contract.pdf`);
+  } catch(e){
+    alert('Could not generate the PDF: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = orig;
+  }
+}
+</script>
+</body>
+</html>
