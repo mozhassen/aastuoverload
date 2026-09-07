@@ -1240,7 +1240,7 @@ async function downloadPdf(){
     let position = 0;
     pdf.addImage(imgData, 'PNG', 0, position, imgW, imgH);
     heightLeft -= pageH;
-    while(heightLeft > 0){
+    while(heightLeft > 4){
       position = heightLeft - imgH;
       pdf.addPage();
       pdf.addImage(imgData, 'PNG', 0, position, imgW, imgH);
