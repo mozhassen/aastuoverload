@@ -675,8 +675,9 @@ auth.onAuthStateChanged(async user => {
       const adminDoc = await db.collection('admins').doc(user.uid).get();
       isAdmin = adminDoc.exists;
     } catch(e){ isAdmin = false; }
-    document.getElementById('adminToggleBtn').style.display = isAdmin ? 'inline-block' : 'none';
+        document.getElementById('adminToggleBtn').style.display = isAdmin ? 'inline-block' : 'none';
     document.getElementById('adminPillSlot').innerHTML = isAdmin ? '<span class="adminPill">Admin</span>' : '';
+    document.getElementById('adminPanel').style.display = 'none';
 
     loadMyRecords();
   } else {
