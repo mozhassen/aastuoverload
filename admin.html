@@ -171,6 +171,11 @@ auth.onAuthStateChanged(async user => {
   gate.style.display = 'none';
   document.getElementById('topBar').style.display = 'flex';
   document.getElementById('whoEmail').textContent = user.email;
+  try{
+    const userDoc = await db.collection('users').doc(user.uid).get();
+    document.getElementById('whoEmail').textContent =
+      (userDoc.exists && userDoc.data().name) ? userDoc.data().name : user.email;
+  } catch(e){ /* keep email shown as fallback */ }
   document.getElementById('adminApp').style.display = 'block';
   loadAdminRecords();
   loadAdminUsers();
