@@ -8,10 +8,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Prepare hosting folder
+            - name: Prepare hosting folder
         run: |
           mkdir -p public
-          cp aastu_overload_form.html public/index.html
+          cp index.html admin.html app-common.js public/
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'

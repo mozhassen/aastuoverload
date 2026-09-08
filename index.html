@@ -72,11 +72,11 @@
   }
   #topBar .who b{color:var(--ink);}
   #topBar .actions-inline{display:flex;gap:10px;align-items:center;}
-  #topBar button{
+  #topBar button, #topBar a.btnlink{
     background:transparent;border:1px solid var(--line);color:var(--ink);
-    padding:6px 12px;font-size:12px;border-radius:3px;
+    padding:6px 12px;font-size:12px;border-radius:3px;text-decoration:none;display:inline-block;
   }
-  #topBar button:hover{background:#EFEADC;}
+  #topBar button:hover, #topBar a.btnlink:hover{background:#EFEADC;}
   #topBar .adminPill{
     background:var(--brass);color:#fff;padding:3px 9px;border-radius:10px;font-size:10.5px;font-weight:600;
   }
@@ -98,7 +98,7 @@
   .record-empty{color:var(--muted);font-size:12px;padding:8px 0;}
   .btn-toggle-admin{
     background:transparent;border:1px solid var(--brass);color:var(--brass);
-    padding:6px 12px;font-size:12px;border-radius:3px;
+    padding:6px 12px;font-size:12px;border-radius:3px;text-decoration:none;display:inline-block;
   }
 
   header.masthead{
@@ -417,7 +417,7 @@
 <div id="topBar" style="display:none;">
   <div class="who">Signed in as <b id="whoEmail"></b> <span id="adminPillSlot"></span></div>
   <div class="actions-inline">
-    <button class="btn-toggle-admin" id="adminToggleBtn" style="display:none;" onclick="toggleAdminPanel()">Admin: view all submissions</button>
+    <a class="btnlink" id="adminToggleBtn" style="display:none;" href="admin.html">Admin dashboard</a>
     <button onclick="doLogout()">Log out</button>
   </div>
 </div>
@@ -432,25 +432,6 @@
     <p class="doc">Doc. No. VPAA/DPT/OF/032</p>
     <p class="doc" id="logoHint" style="color:var(--muted);font-size:11px;margin-top:4px;">Click the badge above to add a logo image (used on-screen and in the downloaded PDF)</p>
   </header>
-
-    <section class="card" id="adminPanel" style="display:none;">
-    <h2>Admin — all submitted contracts</h2>
-    <p class="note">Visible only to accounts listed in the <code>admins</code> Firestore collection.</p>
-
-    <div style="border-top:1px solid var(--line);margin:16px 0;padding-top:16px;">
-      <h3 style="font-family:Georgia,serif;font-size:14px;color:var(--navy-dark);margin:0 0 10px;">Add a new user</h3>
-      <div class="grid two">
-        <div><label>Full name</label><input type="text" id="adm_name" placeholder="Full name"></div>
-        <div><label>Username</label><input type="text" id="adm_username" placeholder="Username"></div>
-        <div><label>Email</label><input type="text" id="adm_email" placeholder="email@aastu.edu.et"></div>
-        <div><label>Password</label><input type="text" id="adm_password" placeholder="Temporary password"></div>
-      </div>
-      <div class="authErr" id="adminAddErr" style="margin-top:8px;"></div>
-      <button class="btn-toggle-admin" id="adminAddBtn" style="margin-top:10px;" onclick="adminAddUser()">Add user</button>
-    </div>
-
-    <div class="record-list" id="adminRecordList"><div class="record-empty">Loading…</div></div>
-  </section>
 
   <section class="card">
     <h2>1. Instructor details</h2>
@@ -539,7 +520,6 @@
 
   <section class="card">
     <h2>4. Payment</h2>
-    
     <div class="grid two">
       <div><label>Rate per LEH (Birr)</label><input id="f_rate" type="number" min="0" step="1" placeholder="e.g. 180" oninput="recalc()"></div>
       <div><label>Income tax to withhold (%, optional estimate)</label><input id="f_tax" type="number" min="0" max="100" step="0.5" value="0" oninput="recalc()"></div>
@@ -570,97 +550,19 @@
     <div class="record-list" id="myRecordList"><div class="record-empty">No saved records yet.</div></div>
   </section>
 
-    <div class="actions">
+  <div class="actions">
     <button class="btn-toggle-admin" id="clearBtn" onclick="clearForm()">Clear form</button>
     <button class="btn-toggle-admin" id="saveBtn" onclick="saveRecord()">Save record</button>
     <button class="btn-main" id="downloadBtn" onclick="downloadPdf()">Download PDF</button>
   </div>
+  <footer class="hint">Generates a filled copy of the AASTU Over Load Teaching Contract Agreement form (VPAA/DPT/OF/032).</footer>
+</div>
 
 <!-- hidden printable version, built at export time -->
 <div id="printHost" style="position:fixed;left:-9999px;top:0;"></div>
 
+<script src="app-common.js"></script>
 <script>
-/* ============================================================
-   FIREBASE SETUP
-   Replace this with YOUR project's config from:
-   Firebase console → Project settings → General → Your apps → SDK setup
-   This config is safe to expose publicly — access is controlled by
-   Firestore security rules, not by hiding this object.
-   ============================================================ */
-const firebaseConfig = {
-  apiKey: "AIzaSyBnQKR9YretBAKgAnUcxunVdpOkKnNlUcg",
-  authDomain: "aastuoverload.firebaseapp.com",
-  projectId: "aastuoverload",
-  storageBucket: "aastuoverload.firebasestorage.app",
-  messagingSenderId: "1017679356912",
-  appId: "1:1017679356912:web:dd8d0024dd28065d143335",
-  measurementId: "G-J06MVDC8H2"
-};
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.firestore();
-
-const secondaryApp = firebase.initializeApp(firebaseConfig, 'Secondary');
-const secondaryAuth = secondaryApp.auth();
-const secondaryDb = secondaryApp.firestore();
-
-let currentUser = null;
-let isAdmin = false;
-
-async function submitAuth(){
-  const username = document.getElementById('auth_username').value.trim();
-  const password = document.getElementById('auth_password').value;
-  const errEl = document.getElementById('authErr');
-  errEl.style.color = 'var(--err)';
-  errEl.textContent = '';
-  if(!username || !password){
-    errEl.textContent = 'Enter both username and password.';
-    return;
-  }
-  const btn = document.getElementById('authSubmitBtn');
-  btn.disabled = true;
-  try{
-    const snap = await db.collection('users').where('username', '==', username).limit(1).get();
-    if(snap.empty){
-      errEl.textContent = 'No account found with that username.';
-      btn.disabled = false;
-      return;
-    }
-    const email = snap.docs[0].data().email;
-    await auth.signInWithEmailAndPassword(email, password);
-  } catch(e){
-    errEl.textContent = e.message;
-  } finally {
-    btn.disabled = false;
-  }
-}
-async function forgotPassword(){
-  const username = document.getElementById('auth_username').value.trim();
-  const errEl = document.getElementById('authErr');
-  errEl.style.color = 'var(--err)';
-  errEl.textContent = '';
-  if(!username){
-    errEl.textContent = 'Enter your username above first, then click "Forgot password?".';
-    return;
-  }
-  try{
-    const snap = await db.collection('users').where('username', '==', username).limit(1).get();
-    if(snap.empty){
-      errEl.textContent = 'No account found with that username.';
-      return;
-    }
-    const email = snap.docs[0].data().email;
-    await auth.sendPasswordResetEmail(email);
-    errEl.style.color = 'var(--good)';
-    errEl.textContent = 'Password reset email sent.';
-  } catch(e){
-    errEl.textContent = e.message;
-  }
-}
-function doLogout(){
-  auth.signOut();
-}
-
 auth.onAuthStateChanged(async user => {
   currentUser = user;
   if(user){
@@ -669,16 +571,21 @@ auth.onAuthStateChanged(async user => {
     document.getElementById('mainApp').style.display = 'block';
     document.getElementById('whoEmail').textContent = user.email;
 
-    // check admin status: looks for a doc at admins/{uid}
     try{
       const adminDoc = await db.collection('admins').doc(user.uid).get();
       isAdmin = adminDoc.exists;
     } catch(e){ isAdmin = false; }
-        document.getElementById('adminToggleBtn').style.display = isAdmin ? 'inline-block' : 'none';
+    document.getElementById('adminToggleBtn').style.display = isAdmin ? 'inline-block' : 'none';
     document.getElementById('adminPillSlot').innerHTML = isAdmin ? '<span class="adminPill">Admin</span>' : '';
-    document.getElementById('adminPanel').style.display = 'none';
 
     loadMyRecords();
+
+    const params = new URLSearchParams(window.location.search);
+    const loadId = params.get('load');
+    if(loadId){
+      loadRecordById(loadId);
+      history.replaceState(null, '', window.location.pathname);
+    }
   } else {
     document.getElementById('authGate').style.display = 'flex';
     document.getElementById('topBar').style.display = 'none';
@@ -686,56 +593,136 @@ auth.onAuthStateChanged(async user => {
   }
 });
 
-function toggleAdminPanel(){
-  const panel = document.getElementById('adminPanel');
-  const show = panel.style.display === 'none';
-  panel.style.display = show ? 'block' : 'none';
-  if(show) loadAdminRecords();
+function clearForm(){
+  if(!confirm('Clear all fields and start a new contract? Anything not saved will be lost.')) return;
+  populateForm({});
 }
 
-async function adminAddUser(){
-  const name = document.getElementById('adm_name').value.trim();
-  const username = document.getElementById('adm_username').value.trim();
-  const email = document.getElementById('adm_email').value.trim();
-  const password = document.getElementById('adm_password').value;
-  const errEl = document.getElementById('adminAddErr');
-  errEl.style.color = 'var(--err)';
-  errEl.textContent = '';
-
-  if(!name || !username || !email || !password){
-    errEl.textContent = 'Fill in name, username, email, and password.';
-    return;
-  }
-
-  const btn = document.getElementById('adminAddBtn');
+async function saveRecord(){
+  if(!currentUser) return;
+  const btn = document.getElementById('saveBtn');
   btn.disabled = true;
   const orig = btn.textContent;
-  btn.textContent = 'Adding…';
-
+  btn.textContent = 'Saving…';
   try{
-    const cred = await secondaryAuth.createUserWithEmailAndPassword(email, password);
-    await secondaryDb.collection('users').doc(cred.user.uid).set({
-      name: name,
-      username: username,
-      email: email
-    });
-    await secondaryAuth.signOut();
-    errEl.style.color = 'var(--good)';
-    errEl.textContent = 'User added.';
-    document.getElementById('adm_name').value = '';
-    document.getElementById('adm_username').value = '';
-    document.getElementById('adm_email').value = '';
-    document.getElementById('adm_password').value = '';
-    if(document.getElementById('adminPanel').style.display !== 'none') loadAdminRecords();
+    const data = collectFormData();
+    data.ownerUid = currentUser.uid;
+    data.ownerEmail = currentUser.email;
+    data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+    await db.collection('contracts').add(data);
+    btn.textContent = 'Saved ✓';
+    loadMyRecords();
+    setTimeout(()=>{ btn.textContent = orig; btn.disabled = false; }, 1500);
   } catch(e){
-    errEl.textContent = e.message;
-  } finally {
-    btn.disabled = false;
+    alert('Could not save: ' + e.message);
     btn.textContent = orig;
+    btn.disabled = false;
   }
 }
 
-/* ---- collect / populate form state (used for save + load) ---- */
+async function loadMyRecords(){
+  if(!currentUser) return;
+  try{
+    const snap = await db.collection('contracts')
+      .where('ownerUid', '==', currentUser.uid)
+      .orderBy('createdAt', 'desc')
+      .limit(25)
+      .get();
+    renderRecordList('myRecordList', snap.docs, false);
+  } catch(e){
+    document.getElementById('myRecordList').innerHTML =
+      `<div class="record-empty">No saved records yet.</div>`;
+  }
+}
+
+let logoDataUrl = null;
+function handleLogoUpload(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    logoDataUrl = e.target.result;
+    const box = document.getElementById('crestBox');
+    box.innerHTML = `<img src="${logoDataUrl}" alt="Logo">`;
+    document.getElementById('logoHint').textContent = 'Logo added — click the badge to replace it';
+  };
+  reader.readAsDataURL(file);
+}
+
+let rowCount = 0;
+function addRow(){
+  rowCount++;
+  const tbody = document.getElementById('courseBody');
+  const tr = document.createElement('tr');
+  tr.dataset.id = rowCount;
+  tr.innerHTML = `
+    <td><input type="text" class="c-title" placeholder="Title & code"></td>
+    <td><input type="number" class="c-cr" step="0.5" min="0" oninput="recalc()"></td>
+    <td><input type="text" class="c-batch"></td>
+    <td><input type="text" class="c-section"></td>
+    <td><input type="number" class="c-students" min="0"></td>
+    <td><input type="number" class="c-lec" step="0.5" min="0" oninput="recalc()"></td>
+    <td><input type="number" class="c-lab" step="0.5" min="0" oninput="recalc()"></td>
+    <td><input type="number" class="c-tut" step="0.5" min="0" oninput="recalc()"></td>
+    <td class="tot">0</td>
+    <td class="rm" onclick="removeRow(this)">✕</td>
+  `;
+  tbody.appendChild(tr);
+  recalc();
+}
+function removeRow(el){
+  el.closest('tr').remove();
+  recalc();
+}
+
+function recalc(){
+  const wLec = num(document.getElementById('w_lec').value) || 0;
+  const wLab = num(document.getElementById('w_lab').value) || 0;
+  const wTut = num(document.getElementById('w_tut').value) || 0;
+
+  let sumCr=0, sumLeh=0, sumStudents=0, courseCount=0;
+  document.querySelectorAll('#courseBody tr').forEach(tr=>{
+    const cr = num(tr.querySelector('.c-cr').value);
+    const lec = num(tr.querySelector('.c-lec').value);
+    const lab = num(tr.querySelector('.c-lab').value);
+    const tut = num(tr.querySelector('.c-tut').value);
+    const students = num(tr.querySelector('.c-students').value);
+    const rowLeh = lec*wLec + lab*wLab + tut*wTut;
+    tr.querySelector('.tot').textContent = rowLeh.toFixed(2);
+    sumCr += cr;
+    sumLeh += rowLeh;
+    sumStudents += students;
+    if(tr.querySelector('.c-title').value.trim()) courseCount++;
+  });
+
+  document.getElementById('sumCr').textContent = sumCr.toFixed(2);
+  document.getElementById('sumLeh').textContent = sumLeh.toFixed(2);
+  document.getElementById('sumCourses').textContent = courseCount;
+  document.getElementById('sumStudents').textContent = sumStudents;
+
+  const weeks = num(document.getElementById('f_weeks').value) || 0;
+  const expected = num(document.getElementById('f_expected').value) || 0;
+
+  const lehSemester = sumLeh * weeks;
+  const expSemester = expected * weeks;
+  const overload = Math.max(0, lehSemester - expSemester);
+
+  document.getElementById('sumLehSem').textContent = lehSemester.toFixed(2);
+  document.getElementById('sumExpSem').textContent = expSemester.toFixed(2);
+  document.getElementById('sumOverload').textContent = overload.toFixed(2);
+
+  const rate = num(document.getElementById('f_rate').value) || 0;
+  const gross = overload * rate;
+  document.getElementById('payGross').textContent = gross.toLocaleString(undefined,{maximumFractionDigits:2}) + ' Birr';
+  document.getElementById('payWords').textContent = gross > 0 ? birrToWords(gross) : '';
+  document.getElementById('payBreakdown').textContent =
+    `${overload.toFixed(2)} overload LEH × ${rate.toLocaleString()} Birr/LEH`;
+
+  document.getElementById('payNet').textContent = '';
+}
+
+for(let i=0;i<4;i++) addRow();
+
 function collectFormData(){
   const courses = [];
   document.querySelectorAll('#courseBody tr').forEach(tr=>{
@@ -821,66 +808,6 @@ function populateForm(data){
   window.scrollTo({top:0, behavior:'smooth'});
 }
 
-function clearForm(){
-  if(!confirm('Clear all fields and start a new contract? Anything not saved will be lost.')) return;
-  populateForm({});
-}
-
-async function saveRecord(){
-  if(!currentUser) return;
-  const btn = document.getElementById('saveBtn');
-  btn.disabled = true;
-  const orig = btn.textContent;
-  btn.textContent = 'Saving…';
-  try{
-    const data = collectFormData();
-    data.ownerUid = currentUser.uid;
-    data.ownerEmail = currentUser.email;
-    data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-    await db.collection('contracts').add(data);
-    btn.textContent = 'Saved ✓';
-    loadMyRecords();
-    setTimeout(()=>{ btn.textContent = orig; btn.disabled = false; }, 1500);
-  } catch(e){
-    alert('Could not save: ' + e.message);
-    btn.textContent = orig;
-    btn.disabled = false;
-  }
-}
-
-function fmtDate(ts){
-  if(!ts || !ts.toDate) return '';
-  return ts.toDate().toLocaleDateString(undefined, {year:'numeric',month:'short',day:'numeric'});
-}
-
-function renderRecordList(containerId, docs, showOwner){
-  const el = document.getElementById(containerId);
-  if(docs.length === 0){
-    el.innerHTML = '<div class="record-empty">No records yet.</div>';
-    return;
-  }
-  el.innerHTML = '';
-  docs.forEach(doc=>{
-    const d = doc.data();
-    const gross = (num(d.rate) * num(d.overload)).toLocaleString(undefined,{maximumFractionDigits:2});
-    const row = document.createElement('div');
-    row.className = 'record-row';
-    row.innerHTML = `
-      <div class="meta">
-        <b>${esc(d.name || '(no name)')}</b>
-        <span>${esc(d.college||'')} ${d.college && d.dept ? '·' : ''} ${esc(d.dept||'')}</span>
-        <span>${gross} Birr</span>
-        <span>${fmtDate(d.createdAt)}</span>
-        ${showOwner ? `<span>${esc(d.ownerEmail||'')}</span>` : ''}
-      </div>
-      <div class="rec-actions">
-        <button onclick="loadRecordById('${doc.id}')">Load</button>
-      </div>
-    `;
-    el.appendChild(row);
-  });
-}
-
 async function loadRecordById(id){
   try{
     const doc = await db.collection('contracts').doc(id).get();
@@ -888,177 +815,6 @@ async function loadRecordById(id){
   } catch(e){
     alert('Could not load record: ' + e.message);
   }
-}
-
-async function loadMyRecords(){
-  if(!currentUser) return;
-  try{
-    const snap = await db.collection('contracts')
-      .where('ownerUid', '==', currentUser.uid)
-      .orderBy('createdAt', 'desc')
-      .limit(25)
-      .get();
-    renderRecordList('myRecordList', snap.docs, false);
-  } catch(e){
-    document.getElementById('myRecordList').innerHTML =
-      `<div class="record-empty">No saved records yet.</div>`;
-  }
-}
-
-async function loadAdminRecords(){
-  try{
-    const snap = await db.collection('contracts')
-      .orderBy('createdAt', 'desc')
-      .limit(100)
-      .get();
-    renderRecordList('adminRecordList', snap.docs, true);
-  } catch(e){
-    document.getElementById('adminRecordList').innerHTML =
-      `<div class="record-empty">Could not load records: ${esc(e.message)}</div>`;
-  }
-}
-
-let logoDataUrl = null;
-
-function handleLogoUpload(event){
-  const file = event.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = function(e){
-    logoDataUrl = e.target.result;
-    const box = document.getElementById('crestBox');
-    box.innerHTML = `<img src="${logoDataUrl}" alt="Logo">`;
-    document.getElementById('logoHint').textContent = 'Logo added — click the badge to replace it';
-  };
-  reader.readAsDataURL(file);
-}
-
-let rowCount = 0;
-function addRow(prefill){
-  rowCount++;
-  const tbody = document.getElementById('courseBody');
-  const tr = document.createElement('tr');
-  tr.dataset.id = rowCount;
-  tr.innerHTML = `
-    <td><input type="text" class="c-title" placeholder="Title & code"></td>
-    <td><input type="number" class="c-cr" step="0.5" min="0" oninput="recalc()"></td>
-    <td><input type="text" class="c-batch"></td>
-    <td><input type="text" class="c-section"></td>
-    <td><input type="number" class="c-students" min="0"></td>
-    <td><input type="number" class="c-lec" step="0.5" min="0" oninput="recalc()"></td>
-    <td><input type="number" class="c-lab" step="0.5" min="0" oninput="recalc()"></td>
-    <td><input type="number" class="c-tut" step="0.5" min="0" oninput="recalc()"></td>
-    <td class="tot">0</td>
-    <td class="rm" onclick="removeRow(this)">✕</td>
-  `;
-  tbody.appendChild(tr);
-  recalc();
-}
-function removeRow(el){
-  el.closest('tr').remove();
-  recalc();
-}
-function num(v){ const n = parseFloat(v); return isNaN(n) ? 0 : n; }
-
-function recalc(){
-  const wLec = num(document.getElementById('w_lec').value) || 0;
-  const wLab = num(document.getElementById('w_lab').value) || 0;
-  const wTut = num(document.getElementById('w_tut').value) || 0;
-
-  let sumCr=0, sumLeh=0, sumStudents=0, courseCount=0;
-  document.querySelectorAll('#courseBody tr').forEach(tr=>{
-    const cr = num(tr.querySelector('.c-cr').value);
-    const lec = num(tr.querySelector('.c-lec').value);
-    const lab = num(tr.querySelector('.c-lab').value);
-    const tut = num(tr.querySelector('.c-tut').value);
-    const students = num(tr.querySelector('.c-students').value);
-    const rowLeh = lec*wLec + lab*wLab + tut*wTut;
-    tr.querySelector('.tot').textContent = rowLeh.toFixed(2);
-    sumCr += cr;
-    sumLeh += rowLeh;
-    sumStudents += students;
-    if(tr.querySelector('.c-title').value.trim()) courseCount++;
-  });
-
-  document.getElementById('sumCr').textContent = sumCr.toFixed(2);
-  document.getElementById('sumLeh').textContent = sumLeh.toFixed(2);
-  document.getElementById('sumCourses').textContent = courseCount;
-  document.getElementById('sumStudents').textContent = sumStudents;
-
-  const weeks = num(document.getElementById('f_weeks').value) || 0;
-  const expected = num(document.getElementById('f_expected').value) || 0;
-
-  const lehSemester = sumLeh * weeks;
-  const expSemester = expected * weeks;
-  const overload = Math.max(0, lehSemester - expSemester);
-
-  document.getElementById('sumLehSem').textContent = lehSemester.toFixed(2);
-  document.getElementById('sumExpSem').textContent = expSemester.toFixed(2);
-  document.getElementById('sumOverload').textContent = overload.toFixed(2);
-
-  const rate = num(document.getElementById('f_rate').value) || 0;
-  const gross = overload * rate;
-  document.getElementById('payGross').textContent = gross.toLocaleString(undefined,{maximumFractionDigits:2}) + ' Birr';
-  document.getElementById('payWords').textContent = gross > 0 ? birrToWords(gross) : '';
-  document.getElementById('payBreakdown').textContent =
-    `${overload.toFixed(2)} overload LEH × ${rate.toLocaleString()} Birr/LEH`;
-
-    document.getElementById('payNet').textContent = '';
-}
-
-// seed with 4 rows to mirror the original paper form
-for(let i=0;i<4;i++) addRow();
-
-const ONES = ['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten',
-  'Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'];
-const TENS = ['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
-
-function threeDigitsToWords(n){
-  let s = '';
-  if(n >= 100){
-    s += ONES[Math.floor(n/100)] + ' Hundred';
-    n %= 100;
-    if(n > 0) s += ' ';
-  }
-  if(n >= 20){
-    s += TENS[Math.floor(n/10)];
-    if(n % 10 > 0) s += '-' + ONES[n % 10];
-  } else if(n > 0){
-    s += ONES[n];
-  }
-  return s;
-}
-
-function integerToWords(n){
-  if(n === 0) return 'Zero';
-  const scales = [['', 1], ['Thousand', 1000], ['Million', 1000000], ['Billion', 1000000000]];
-  let parts = [];
-  let remaining = Math.floor(n);
-  for(let i = scales.length - 1; i >= 0; i--){
-    const [name, size] = scales[i];
-    const chunk = Math.floor(remaining / size);
-    if(chunk > 0){
-      parts.push(threeDigitsToWords(chunk) + (name ? ' ' + name : ''));
-      remaining %= size;
-    }
-  }
-  return parts.join(' ');
-}
-
-function birrToWords(amount){
-  const birr = Math.floor(amount);
-  const cents = Math.round((amount - birr) * 100);
-  let words = integerToWords(birr) + ' Birr';
-  if(cents > 0){
-    words += ' and ' + integerToWords(cents) + ' Cents';
-  }
-  return words + ' Only';
-}
-
-function esc(s){
-  const d = document.createElement('div');
-  d.textContent = s || '';
-  return d.innerHTML;
 }
 
 function buildPrintHtml(){
@@ -1073,17 +829,13 @@ function buildPrintHtml(){
   const start = document.getElementById('f_start').value;
   const end = document.getElementById('f_end').value;
   const weeks = document.getElementById('f_weeks').value;
-  const expected = document.getElementById('f_expected').value;
   const rate = num(document.getElementById('f_rate').value);
-  const taxPct = num(document.getElementById('f_tax').value);
 
   const sumCr = document.getElementById('sumCr').textContent;
-  const sumLeh = document.getElementById('sumLeh').textContent;
   const lehSem = document.getElementById('sumLehSem').textContent;
   const expSem = document.getElementById('sumExpSem').textContent;
   const overload = document.getElementById('sumOverload').textContent;
   const gross = num(overload) * rate;
-  const net = taxPct > 0 ? gross * (1 - taxPct/100) : null;
 
   let rowsHtml = '';
   let rowNo = 0;
@@ -1178,7 +930,7 @@ function buildPrintHtml(){
       payable after submission of the final grade of all students to the registrar office. The payment is subjected to income
       tax deduction and it shall in principle computed at a rate of <span class="blank">${esc(weeks)||'&nbsp;'}</span> weeks
       X <span class="blank">${rate?rate.toLocaleString():'&nbsp;'}</span> Birr per LEH <span class="blank">${overload}</span> LEHs.
-          </p>
+    </p>
 
     <p class="p-para">
       <span class="p-num">3.</span> In addition to the above assignment, the Employee shall invigilate examination as assigned;

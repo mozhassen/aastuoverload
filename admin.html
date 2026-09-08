@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AASTU Overload — Admin Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-app-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-auth-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-firestore-compat.min.js"></script>
+<style>
+  :root{
+    --paper:#F7F4EC;
+    --panel:#FFFFFF;
+    --ink:#242019;
+    --muted:#736C5C;
+    --navy:#1F3A5F;
+    --navy-dark:#152A45;
+    --brass:#A9782F;
+    --line:#DAD2BC;
+    --good:#3F6C4B;
+    --err:#A23B3B;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Segoe UI","Helvetica Neue",Arial,sans-serif;
+    font-size:14px;line-height:1.5;padding:28px 16px 60px;
+  }
+  .wrap{max-width:900px;margin:0 auto;}
+
+  #topBar{
+    display:flex;justify-content:space-between;align-items:center;
+    max-width:900px;margin:0 auto 18px;font-size:12.5px;color:var(--muted);
+  }
+  #topBar .who b{color:var(--ink);}
+  #topBar a.btnlink, #topBar button{
+    background:transparent;border:1px solid var(--line);color:var(--ink);
+    padding:6px 12px;font-size:12px;border-radius:3px;text-decoration:none;
+  }
+  #topBar a.btnlink:hover, #topBar button:hover{background:#EFEADC;}
+
+  h1{
+    font-family:Georgia,"Times New Roman",serif;font-size:22px;
+    color:var(--navy-dark);text-align:center;margin:0 0 22px;
+    border-bottom:3px solid var(--navy);padding-bottom:16px;
+  }
+
+  section.card{
+    background:var(--panel);border:1px solid var(--line);border-radius:3px;
+    padding:22px 24px;margin-bottom:18px;
+  }
+  section.card > h2{
+    font-family:Georgia,serif;font-size:16px;color:var(--navy-dark);
+    margin:0 0 4px;padding-bottom:10px;border-bottom:1px solid var(--line);
+  }
+  section.card > p.note{margin:8px 0 16px;font-size:12.5px;color:var(--muted);}
+
+  .grid.two{display:grid;grid-template-columns:repeat(2,1fr);gap:14px 18px;}
+  @media(max-width:640px){.grid.two{grid-template-columns:1fr;}}
+  label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px;}
+  input[type=text]{
+    width:100%;padding:8px 9px;border:1px solid var(--line);border-radius:2px;
+    background:#FCFBF8;color:var(--ink);font-size:13.5px;font-family:inherit;
+  }
+  input:focus{outline:none;border-color:var(--navy);background:#fff;}
+
+  button{font-family:inherit;cursor:pointer;border:none;border-radius:2px;}
+  .btn-toggle-admin{
+    background:transparent;border:1px solid var(--brass);color:var(--brass);
+    padding:8px 16px;font-size:12.5px;margin-top:12px;
+  }
+  .btn-toggle-admin:hover{background:#FBF3E7;}
+  .btn-toggle-admin:disabled{opacity:0.6;cursor:wait;}
+
+  .authErr{font-size:12px;margin-top:8px;min-height:14px;}
+
+  .record-list{margin-top:12px;}
+  .record-row{
+    display:flex;justify-content:space-between;align-items:center;
+    border:1px solid var(--line);border-radius:3px;padding:9px 12px;margin-bottom:6px;
+    font-size:12.5px;background:#FBFAF6;
+  }
+  .record-row .meta b{color:var(--navy-dark);}
+  .record-row .meta span{color:var(--muted);margin-left:8px;font-size:11.5px;}
+  .record-row button{
+    background:var(--navy);color:#fff;font-size:11px;padding:5px 10px;border-radius:2px;
+  }
+  .record-row button:hover{background:var(--navy-dark);}
+  .record-empty{color:var(--muted);font-size:12px;padding:8px 0;}
+
+  #gate{
+    max-width:420px;margin:80px auto;text-align:center;
+    background:#fff;border:1px solid var(--line);border-radius:4px;padding:30px;
+  }
+  #gate p{color:var(--muted);font-size:13.5px;}
+  #gate a{color:var(--navy);}
+</style>
+</head>
+<body>
+
+<div id="gate" style="display:none;">
+  <p id="gateMsg">Checking access…</p>
+  <p><a href="index.html">← Back to the contract form</a></p>
+</div>
+
+<div id="topBar" style="display:none;">
+  <div class="who">Signed in as <b id="whoEmail"></b></div>
+  <div>
+    <a class="btnlink" href="index.html">← Contract form</a>
+    <button onclick="doLogout()">Log out</button>
+  </div>
+</div>
+
+<div class="wrap" id="adminApp" style="display:none;">
+  <h1>AASTU Overload — Admin Dashboard</h1>
+
+  <section class="card">
+    <h2>Add a new user</h2>
+    <p class="note">Only admin accounts can create new logins. New users cannot self-register.</p>
+    <div class="grid two">
+      <div><label>Full name</label><input type="text" id="adm_name" placeholder="Full name"></div>
+      <div><label>Username</label><input type="text" id="adm_username" placeholder="Username"></div>
+      <div><label>Email</label><input type="text" id="adm_email" placeholder="email@aastu.edu.et"></div>
+      <div><label>Password</label><input type="text" id="adm_password" placeholder="Temporary password"></div>
+    </div>
+    <div class="authErr" id="adminAddErr" style="margin-top:8px;"></div>
+    <button class="btn-toggle-admin" id="adminAddBtn" onclick="adminAddUser()">Add user</button>
+  </section>
+
+  <section class="card">
+    <h2>All submitted contracts</h2>
+    <div class="record-list" id="adminRecordList"><div class="record-empty">Loading…</div></div>
+  </section>
+</div>
+
+<script src="app-common.js"></script>
+<script>
+auth.onAuthStateChanged(async user => {
+  currentUser = user;
+  const gate = document.getElementById('gate');
+  const gateMsg = document.getElementById('gateMsg');
+
+  if(!user){
+    gate.style.display = 'block';
+    gateMsg.textContent = 'You need to sign in first.';
+    document.getElementById('topBar').style.display = 'none';
+    document.getElementById('adminApp').style.display = 'none';
+    return;
+  }
+
+  let admin = false;
+  try{
+    const adminDoc = await db.collection('admins').doc(user.uid).get();
+    admin = adminDoc.exists;
+  } catch(e){ admin = false; }
+  isAdmin = admin;
+
+  if(!admin){
+    gate.style.display = 'block';
+    gateMsg.textContent = "This account doesn't have admin access.";
+    document.getElementById('topBar').style.display = 'none';
+    document.getElementById('adminApp').style.display = 'none';
+    return;
+  }
+
+  gate.style.display = 'none';
+  document.getElementById('topBar').style.display = 'flex';
+  document.getElementById('whoEmail').textContent = user.email;
+  document.getElementById('adminApp').style.display = 'block';
+  loadAdminRecords();
+});
+
+async function adminAddUser(){
+  const name = document.getElementById('adm_name').value.trim();
+  const username = document.getElementById('adm_username').value.trim();
+  const email = document.getElementById('adm_email').value.trim();
+  const password = document.getElementById('adm_password').value;
+  const errEl = document.getElementById('adminAddErr');
+  errEl.style.color = 'var(--err)';
+  errEl.textContent = '';
+
+  if(!name || !username || !email || !password){
+    errEl.textContent = 'Fill in name, username, email, and password.';
+    return;
+  }
+
+  const btn = document.getElementById('adminAddBtn');
+  btn.disabled = true;
+  const orig = btn.textContent;
+  btn.textContent = 'Adding…';
+
+  try{
+    const cred = await secondaryAuth.createUserWithEmailAndPassword(email, password);
+    await secondaryDb.collection('users').doc(cred.user.uid).set({
+      name: name,
+      username: username,
+      email: email
+    });
+    await secondaryAuth.signOut();
+    errEl.style.color = 'var(--good)';
+    errEl.textContent = 'User added.';
+    document.getElementById('adm_name').value = '';
+    document.getElementById('adm_username').value = '';
+    document.getElementById('adm_email').value = '';
+    document.getElementById('adm_password').value = '';
+    loadAdminRecords();
+  } catch(e){
+    errEl.textContent = e.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = orig;
+  }
+}
+
+async function loadAdminRecords(){
+  try{
+    const snap = await db.collection('contracts')
+      .orderBy('createdAt', 'desc')
+      .limit(100)
+      .get();
+    renderRecordList('adminRecordList', snap.docs, true);
+  } catch(e){
+    document.getElementById('adminRecordList').innerHTML =
+      `<div class="record-empty">Could not load records: ${esc(e.message)}</div>`;
+  }
+}
+
+function loadRecordById(id){
+  // Admin dashboard doesn't have the contract form on this page —
+  // send the admin to the form page with the record to load.
+  window.location.href = 'index.html?load=' + encodeURIComponent(id);
+}
+</script>
+</body>
+</html>
