@@ -402,9 +402,9 @@
     <h2 id="authTitle">Sign in</h2>
     <p class="sub">AASTU Overload Contract tool — staff login required</p>
     <label>Username</label>
-    <input type="text" id="auth_username" placeholder="Your username">
+    <input type="text" id="auth_username" placeholder="Your username" onkeydown="if(event.key==='Enter'){event.preventDefault();submitAuth();}">
     <label>Password</label>
-    <input type="text" id="auth_password" placeholder="••••••••" autocomplete="off" style="-webkit-text-security:disc;text-security:disc;">
+    <input type="text" id="auth_password" placeholder="••••••••" autocomplete="off" style="-webkit-text-security:disc;text-security:disc;" onkeydown="if(event.key==='Enter'){event.preventDefault();submitAuth();}">
     <div class="authErr" id="authErr"></div>
     <div class="authBtns">
       <button class="primary" id="authSubmitBtn" onclick="submitAuth()">Sign in</button>
