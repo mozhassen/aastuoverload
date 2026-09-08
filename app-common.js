@@ -111,12 +111,27 @@ function renderRecordList(containerId, docs, showOwner){
         <span>${fmtDate(d.createdAt)}</span>
         ${showOwner ? `<span>${esc(d.ownerEmail||'')}</span>` : ''}
       </div>
-      <div class="rec-actions">
+            <div class="rec-actions">
         <button onclick="loadRecordById('${doc.id}')">Load</button>
+        <button onclick="deleteRecordById('${doc.id}','${containerId}')" style="background:var(--err);">Delete</button>
       </div>
     `;
     el.appendChild(row);
   });
+}
+
+async function deleteRecordById(id, containerId){
+  if(!confirm('Delete this saved contract permanently? This cannot be undone.')) return;
+  try{
+    await db.collection('contracts').doc(id).delete();
+    if(containerId === 'myRecordList' && typeof loadMyRecords === 'function'){
+      loadMyRecords();
+    } else if(typeof loadAdminRecords === 'function'){
+      loadAdminRecords();
+    }
+  } catch(e){
+    alert('Could not delete: ' + e.message);
+  }
 }
 
 /* ---- number → words, used by the payment section and the PDF ---- */
