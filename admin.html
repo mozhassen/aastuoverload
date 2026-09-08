@@ -127,6 +127,12 @@
   </section>
 
   <section class="card">
+    <h2>Manage users</h2>
+    <p class="note">Deleting a user removes their app profile, which blocks them from signing in. Their entry in Firebase Authentication itself is not removed (that requires the Firebase Console or a paid Cloud Function) — this only revokes access to this tool.</p>
+    <div class="record-list" id="adminUserList"><div class="record-empty">Loading…</div></div>
+  </section>
+
+  <section class="card">
     <h2>All submitted contracts</h2>
     <div class="record-list" id="adminRecordList"><div class="record-empty">Loading…</div></div>
   </section>
@@ -167,6 +173,7 @@ auth.onAuthStateChanged(async user => {
   document.getElementById('whoEmail').textContent = user.email;
   document.getElementById('adminApp').style.display = 'block';
   loadAdminRecords();
+  loadAdminUsers();
 });
 
 async function adminAddUser(){
@@ -202,12 +209,53 @@ async function adminAddUser(){
     document.getElementById('adm_username').value = '';
     document.getElementById('adm_email').value = '';
     document.getElementById('adm_password').value = '';
-    loadAdminRecords();
+    loadAdminUsers();
   } catch(e){
     errEl.textContent = e.message;
   } finally {
     btn.disabled = false;
     btn.textContent = orig;
+  }
+}
+
+async function loadAdminUsers(){
+  const el = document.getElementById('adminUserList');
+  try{
+    const snap = await db.collection('users').get();
+    if(snap.empty){
+      el.innerHTML = '<div class="record-empty">No users yet.</div>';
+      return;
+    }
+    el.innerHTML = '';
+    snap.docs.forEach(doc=>{
+      const d = doc.data();
+      const isSelf = currentUser && doc.id === currentUser.uid;
+      const row = document.createElement('div');
+      row.className = 'record-row';
+      row.innerHTML = `
+        <div class="meta">
+          <b>${esc(d.name || '(no name)')}</b>
+          <span>${esc(d.username||'')}</span>
+          <span>${esc(d.email||'')}</span>
+        </div>
+        <div class="rec-actions">
+          <button onclick="deleteAdminUser('${doc.id}','${esc(d.username||d.email||'this user')}')" style="background:var(--err);" ${isSelf ? 'disabled title="You can\'t delete your own account here."' : ''}>Delete</button>
+        </div>
+      `;
+      el.appendChild(row);
+    });
+  } catch(e){
+    el.innerHTML = `<div class="record-empty">Could not load users: ${esc(e.message)}</div>`;
+  }
+}
+
+async function deleteAdminUser(uid, label){
+  if(!confirm(`Delete "${label}"? They will no longer be able to sign in. This cannot be undone from here.`)) return;
+  try{
+    await db.collection('users').doc(uid).delete();
+    loadAdminUsers();
+  } catch(e){
+    alert('Could not delete: ' + e.message);
   }
 }
 
