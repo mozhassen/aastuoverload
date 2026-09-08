@@ -570,12 +570,11 @@
     <div class="record-list" id="myRecordList"><div class="record-empty">No saved records yet.</div></div>
   </section>
 
-  <div class="actions">
+    <div class="actions">
+    <button class="btn-toggle-admin" id="clearBtn" onclick="clearForm()">Clear form</button>
     <button class="btn-toggle-admin" id="saveBtn" onclick="saveRecord()">Save record</button>
     <button class="btn-main" id="downloadBtn" onclick="downloadPdf()">Download PDF</button>
   </div>
-  <footer class="hint">Generates a filled copy of the AASTU Over Load Teaching Contract Agreement form (VPAA/DPT/OF/032).</footer>
-</div>
 
 <!-- hidden printable version, built at export time -->
 <div id="printHost" style="position:fixed;left:-9999px;top:0;"></div>
@@ -820,6 +819,11 @@ function populateForm(data){
   }
   recalc();
   window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function clearForm(){
+  if(!confirm('Clear all fields and start a new contract? Anything not saved will be lost.')) return;
+  populateForm({});
 }
 
 async function saveRecord(){
