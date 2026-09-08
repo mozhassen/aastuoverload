@@ -43,10 +43,21 @@ async function submitAuth(){
     const email = snap.docs[0].data().email;
     await auth.signInWithEmailAndPassword(email, password);
   } catch(e){
-    errEl.textContent = e.message;
+    errEl.textContent = friendlyAuthError(e);
   } finally {
     btn.disabled = false;
   }
+}
+
+function friendlyAuthError(e){
+  const code = e && e.code ? e.code : '';
+  if(['auth/invalid-credential','auth/wrong-password','auth/user-not-found','auth/invalid-email'].includes(code)){
+    return 'Wrong username or password. Please check and try again.';
+  }
+  if(code === 'auth/too-many-requests'){
+    return 'Too many attempts. Please wait a moment and try again.';
+  }
+  return e.message;
 }
 
 async function forgotPassword(){
