@@ -21,6 +21,16 @@ const secondaryDb = secondaryApp.firestore();
 let currentUser = null;
 let isAdmin = false;
 
+/* ---- full-page loader: hidden once the page knows who is signed in ---- */
+function hidePageLoader(){
+  const l = document.getElementById('pageLoader');
+  if(!l || l.dataset.done) return;
+  l.dataset.done = '1';
+  l.classList.add('hide');
+  setTimeout(()=>l.remove(), 450);
+}
+setTimeout(hidePageLoader, 8000); // safety net if Firebase never answers
+
 /* ---- tiny spinner injected once, shared by every button on every page ---- */
 (function injectSpinnerStyles(){
   const style = document.createElement('style');

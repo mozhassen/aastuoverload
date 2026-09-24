@@ -2,6 +2,21 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<style>
+  @view-transition { navigation: auto; }
+  #pageLoader{position:fixed;inset:0;z-index:9999;background:#F7F4EC;display:flex;align-items:center;justify-content:center;transition:opacity .35s ease;}
+  #pageLoader.hide{opacity:0;pointer-events:none;}
+  #pageLoader .pl-spin{width:34px;height:34px;border:3px solid #DAD2BC;border-top-color:#1F3A5F;border-radius:50%;animation:plspin .8s linear infinite;}
+  @keyframes plspin{to{transform:rotate(360deg);}}
+  @keyframes pageIn{from{opacity:0;}to{opacity:1;}}
+  @keyframes boxIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+  #mainApp,#adminApp,#topBar,#gate{animation:pageIn .4s ease both;}
+  #authGate .box{animation:boxIn .4s ease both;}
+  @media (prefers-reduced-motion:reduce){
+    #mainApp,#adminApp,#topBar,#gate,#authGate .box{animation:none;}
+    #pageLoader{transition:none;}
+  }
+</style>
 <title>AASTU Overload Teaching Contract — Form &amp; Payment Calculator</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -395,6 +410,7 @@
 
 </head>
 <body>
+<div id="pageLoader"><div class="pl-spin"></div></div>
 
 <!-- ---- Auth gate: shown until the user signs in ---- -->
 <div id="authGate">
@@ -584,6 +600,7 @@ auth.onAuthStateChanged(async user => {
     } catch(e){ isAdmin = false; }
     document.getElementById('adminToggleBtn').style.display = isAdmin ? 'inline-block' : 'none';
     document.getElementById('adminPillSlot').innerHTML = isAdmin ? '<span class="adminPill">Admin</span>' : '';
+    hidePageLoader();
 
     loadMyRecords();
 
@@ -597,6 +614,7 @@ auth.onAuthStateChanged(async user => {
     document.getElementById('authGate').style.display = 'flex';
     document.getElementById('topBar').style.display = 'none';
     document.getElementById('mainApp').style.display = 'none';
+    hidePageLoader();
   }
 });
 
