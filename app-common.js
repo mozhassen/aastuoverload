@@ -21,6 +21,42 @@ const secondaryDb = secondaryApp.firestore();
 let currentUser = null;
 let isAdmin = false;
 
+/* ---- tiny spinner injected once, shared by every button on every page ---- */
+(function injectSpinnerStyles(){
+  const style = document.createElement('style');
+  style.textContent = `
+    .btn-spinner{
+      display:inline-block;width:12px;height:12px;margin-right:7px;
+      border:2px solid rgba(255,255,255,0.45);border-top-color:#fff;
+      border-radius:50%;animation:btnspin .7s linear infinite;vertical-align:-2px;
+    }
+    .btn-spinner.dark{
+      border:2px solid rgba(36,32,25,0.25);border-top-color:var(--ink,#242019);
+    }
+    @keyframes btnspin{to{transform:rotate(360deg);}}
+  `;
+  document.head.appendChild(style);
+})();
+
+function setBtnBusy(btn, label, dark){
+  if(!btn) return;
+  if(btn.dataset.busy === '1') return; // already busy, don't clobber saved original
+  btn.dataset.busy = '1';
+  btn.dataset.origHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = `<span class="btn-spinner${dark ? ' dark' : ''}"></span>${label}`;
+}
+
+function clearBtnBusy(btn){
+  if(!btn) return;
+  btn.disabled = false;
+  if(btn.dataset.busy === '1'){
+    btn.innerHTML = btn.dataset.origHtml;
+    delete btn.dataset.busy;
+    delete btn.dataset.origHtml;
+  }
+}
+
 async function submitAuth(){
   const username = document.getElementById('auth_username').value.trim();
   const password = document.getElementById('auth_password').value;
@@ -32,20 +68,20 @@ async function submitAuth(){
     return;
   }
   const btn = document.getElementById('authSubmitBtn');
-  btn.disabled = true;
+  setBtnBusy(btn, 'Signing in…');
   try{
     const snap = await db.collection('users').where('username', '==', username).limit(1).get();
     if(snap.empty){
       errEl.textContent = 'No account found with that username.';
-      btn.disabled = false;
       return;
     }
     const email = snap.docs[0].data().email;
     await auth.signInWithEmailAndPassword(email, password);
+    // onAuthStateChanged takes it from here and swaps the screen
   } catch(e){
     errEl.textContent = friendlyAuthError(e);
   } finally {
-    btn.disabled = false;
+    clearBtnBusy(btn);
   }
 }
 
@@ -69,6 +105,9 @@ async function forgotPassword(){
     errEl.textContent = 'Enter your username above first, then click "Forgot password?".';
     return;
   }
+  const link = document.querySelector('.forgot[onclick="forgotPassword()"]');
+  const origLinkText = link ? link.textContent : null;
+  if(link){ link.textContent = 'Sending…'; link.style.pointerEvents = 'none'; }
   try{
     const snap = await db.collection('users').where('username', '==', username).limit(1).get();
     if(snap.empty){
@@ -81,11 +120,19 @@ async function forgotPassword(){
     errEl.textContent = 'Password reset email sent.';
   } catch(e){
     errEl.textContent = e.message;
+  } finally {
+    if(link){ link.textContent = origLinkText; link.style.pointerEvents = ''; }
   }
 }
 
-function doLogout(){
-  auth.signOut();
+async function doLogout(btn){
+  setBtnBusy(btn, 'Logging out…', true);
+  try{
+    await auth.signOut();
+    // onAuthStateChanged will swap the screen back to the sign-in gate
+  } finally {
+    clearBtnBusy(btn);
+  }
 }
 
 /* ---- small shared utilities ---- */
