@@ -170,11 +170,14 @@ auth.onAuthStateChanged(async user => {
     return;
   }
 
-  let admin = false;
-  try{
-    const adminDoc = await db.collection('admins').doc(user.uid).get();
-    admin = adminDoc.exists;
-  } catch(e){ admin = false; }
+  // Kick both lookups off together instead of one after the other —
+  // the admin check still gates access, but the name lookup no longer
+  // waits for it to finish first.
+  const adminPromise = db.collection('admins').doc(user.uid).get().catch(()=>null);
+  const userPromise = db.collection('users').doc(user.uid).get().catch(()=>null);
+
+  const adminDoc = await adminPromise;
+  const admin = !!(adminDoc && adminDoc.exists);
   isAdmin = admin;
 
   if(!admin){
@@ -189,11 +192,10 @@ auth.onAuthStateChanged(async user => {
   gate.style.display = 'none';
   document.getElementById('topBar').style.display = 'flex';
   document.getElementById('whoEmail').textContent = user.email;
-  try{
-    const userDoc = await db.collection('users').doc(user.uid).get();
-    document.getElementById('whoEmail').textContent =
-      (userDoc.exists && userDoc.data().name) ? userDoc.data().name : user.email;
-  } catch(e){ /* keep email shown as fallback */ }
+  const userDoc = await userPromise;
+  if(userDoc && userDoc.exists && userDoc.data().name){
+    document.getElementById('whoEmail').textContent = userDoc.data().name;
+  }
   document.getElementById('adminApp').style.display = 'block';
   hidePageLoader();
   loadAdminRecords();

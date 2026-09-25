@@ -136,12 +136,13 @@ async function forgotPassword(){
 }
 
 async function doLogout(btn){
-  setBtnBusy(btn, 'Logging out…', true);
+  // No spinner here — spinning is reserved for the login step.
+  if(btn){ btn.disabled = true; btn.textContent = 'Logging out…'; }
   try{
     await auth.signOut();
     // onAuthStateChanged will swap the screen back to the sign-in gate
   } finally {
-    clearBtnBusy(btn);
+    if(btn){ btn.disabled = false; btn.textContent = 'Log out'; }
   }
 }
 

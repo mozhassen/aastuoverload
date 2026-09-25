@@ -588,16 +588,17 @@ auth.onAuthStateChanged(async user => {
     document.getElementById('mainApp').style.display = 'block';
     document.getElementById('whoEmail').textContent = user.email;
 
-    try{
-      const userDoc = await db.collection('users').doc(user.uid).get();
-      document.getElementById('whoEmail').textContent =
-        (userDoc.exists && userDoc.data().name) ? userDoc.data().name : user.email;
-    } catch(e){ /* keep email shown as fallback */ }
+    // Fire both lookups together — sequential awaits here used to make
+    // sign-in take two round-trips back to back; this way it's one.
+    const [userDocRes, adminDocRes] = await Promise.allSettled([
+      db.collection('users').doc(user.uid).get(),
+      db.collection('admins').doc(user.uid).get()
+    ]);
 
-    try{
-      const adminDoc = await db.collection('admins').doc(user.uid).get();
-      isAdmin = adminDoc.exists;
-    } catch(e){ isAdmin = false; }
+    if(userDocRes.status === 'fulfilled' && userDocRes.value.exists && userDocRes.value.data().name){
+      document.getElementById('whoEmail').textContent = userDocRes.value.data().name;
+    }
+    isAdmin = (adminDocRes.status === 'fulfilled') ? adminDocRes.value.exists : false;
     document.getElementById('adminToggleBtn').style.display = isAdmin ? 'inline-block' : 'none';
     document.getElementById('adminPillSlot').innerHTML = isAdmin ? '<span class="adminPill">Admin</span>' : '';
     hidePageLoader();
